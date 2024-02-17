@@ -69,6 +69,7 @@ int save_label(char* name, int address) {
 		label->label_address = address;
 		label->label_name = name;
 		label->next = NULL;
+        printf("saved label: %s, ",name);
 		return EXIT_SUCCESS;
 	}
 
@@ -83,6 +84,7 @@ int save_label(char* name, int address) {
 			tmp->next->label_address = address;
 			tmp->next->label_name = name;
 			tmp->next->next = NULL;
+            printf("saved label: %s, ",name);
 			return EXIT_SUCCESS;
 		}
 		tmp = tmp->next;
@@ -97,9 +99,11 @@ void first_pass() {
 
 	//for every line of code inputed:
 	while (fgets(buffer, sizeof(buffer), program) != NULL) {
+        
 		if (is_line_a_label(buffer)) {
 			//save the label name to row number.
 			save_label(buffer, row + 1);
+            printf("buff: %s\n",buffer);
 		}
 		else {
 			row++; //instruction
@@ -113,7 +117,7 @@ void translate_instruction(char* line) {
 	char* pch = strtok(line, " ,$");
 	while (pch != NULL)
 	{
-		printf("%s\n", pch);
+		//printf("%s\n", pch);
 		pch = strtok(NULL, " ,$");
 	}
 }
