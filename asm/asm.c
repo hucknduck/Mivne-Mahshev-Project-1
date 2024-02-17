@@ -38,27 +38,27 @@ struct labels {
 struct labels* label;
 
 bool is_line_a_label(char* line) { // examples: L4:, Olnmfda:, L1:
+    char* end;
 	if (line == NULL || *line == '\0') {
 		return false;
 	}
 	// Check if the first char is not a letter:
-	if (!(('a' <= *line && *line <= 'z') ||
-		('A' <= *line && *line <= 'Z'))) {
-		return false;
-	}
+
+	// if (!(('a' <= *line && *line <= 'z') ||
+	// 	('A' <= *line && *line <= 'Z'))) {
+    //     printf("%s is not a letter",*line);
+	// 	return false;
+	// }
 	// Find the end of the string
-	char* end = line;
+	end = line;
 	while (*end != '\0') {
+        if (*end == ':') 
+		    return true; // If not, return false
 		end++;
 	}
-	end--; // Move to the last character before the null terminator
+	
 
-	// Check if the last character is a colon
-	if (*end != ':') {
-		return false; // If not, return false
-	}
-
-	return true;
+	return false;
 }
 
 int save_label(char* name, int address) {
@@ -69,7 +69,7 @@ int save_label(char* name, int address) {
 		label->label_address = address;
 		label->label_name = name;
 		label->next = NULL;
-        printf("saved label: %s, ",name);
+        printf("saved label: %s",name);
 		return EXIT_SUCCESS;
 	}
 
@@ -84,7 +84,7 @@ int save_label(char* name, int address) {
 			tmp->next->label_address = address;
 			tmp->next->label_name = name;
 			tmp->next->next = NULL;
-            printf("saved label: %s, ",name);
+            printf("saved label: %s",name);
 			return EXIT_SUCCESS;
 		}
 		tmp = tmp->next;
@@ -102,10 +102,12 @@ void first_pass() {
         
 		if (is_line_a_label(buffer)) {
 			//save the label name to row number.
-			save_label(buffer, row + 1);
             printf("buff: %s\n",buffer);
+			save_label(buffer, row + 1);
+            
 		}
 		else {
+            printf("row: %d\n",row);
 			row++; //instruction
 			//todo : maybe check if the line is actually an instruction
 		}
