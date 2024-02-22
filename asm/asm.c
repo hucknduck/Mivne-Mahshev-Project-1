@@ -48,7 +48,7 @@
 #define $SP "E"
 #define $RA "F"
 
-FILE * program, *imein, *dmemin; /*asm.exe program.asm imemin.txt dmemin.txt*/
+FILE * program, *imemin, *dmemin; /*asm.exe program.asm imemin.txt dmemin.txt*/
 struct labels {
 	char* label_name;
 	int label_address;
@@ -325,8 +325,8 @@ int main(int argc, char* argv[]) {
 		return EXIT_FAILURE;
 	}
 	/*Creating the output files*/
-	imein = fopen(argv[2], "w"); // imemin.txt, if exists it erases it
-	if (imein == NULL) {
+	imemin = fopen(argv[2], "w"); // imemin.txt, if exists it erases it
+	if (imemin == NULL) {
 		return EXIT_FAILURE;
 	}
 	dmemin = fopen(argv[3], "w"); // dmemin.txt, if exists it erases it
