@@ -12,6 +12,7 @@ char* regs[16]; //hold regs value, same encoding as in PDF
 char* IO[23]; //hold IO regs value, same encoding as in PDF
 int PC;
 int cyclecount;
+bool running = true;
 FILE *imemin, *dmemin, *diskin, *irq2in; //input files
 FILE *dmemout, *regout, *trace, *hwregtrace, *cycles, *leds, *display7seg, *diskout, *monitortxt, *monitoryuv; //output files
 
@@ -24,13 +25,15 @@ bool init_values(){ //init values of regs, IO, and copy imemin and dmemin into a
 }
 
 bool run_program(){ //main func that runs while we didn't get HALT instruction
-    while(true){
+    while(running){
         //split into 4 parts:
         //get all args needed from asmcode[PC]: translate from opcode to args
         //run instruction: switch case depending on opcode !!!PC IS UPDATED HERE!!!
         //run all parallel auxilary systems: timer, disk, INTERRUPTS!!! - PC maybe updated here if interrupted
         //write to output files all that is relevant
-        int opcode, rd, rs, rt, rm, imm1, imm2; 
+        int opcode, rd, rs, rt, rm, imm1, imm2; //the 7 arguments per instruction
+        
+
     }
 }
 
