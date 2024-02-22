@@ -7,20 +7,22 @@
 #define MAX_LABEL_LEN 50
 #define MAX_NUM_OF_LINES 4096
 #define NUM_OF_SECTORS 128
-#define INST_WDT 12 //in Bytes
-#define MEM_WDT 8 //in Bytes
+#define SECTOR_SIZE 512 //Bytes
+#define INST_WDT 12 //Bytes
+#define MEM_WDT 8 //Bytes
 char* asmcode[MAX_NUM_OF_LINES] = { NULL }; //PC will read from this array to get current instruction
 char* mem[MAX_NUM_OF_LINES] = { "00000000" }; //write dmemin here, and output this to dmemout
 int furthestaddresswritten; //so we know when to stop writing "00000000" in dmemout
-char* disk[NUM_OF_SECTORS];
+char* disk[NUM_OF_SECTORS][SECTOR_SIZE];
 int furthestsectorwritten; // so we know when to stop writing "00000000" in diskout
+int sectordepth;
 char* regs[16]; //hold regs value, same encoding as in PDF
 char* IO[23]; //hold IO regs value, same encoding as in PDF
 int nextirq2;
 bool havenextirq2;
 int PC;
 int cyclecount;
-bool running = true;
+bool running;
 FILE *imemin, *dmemin, *diskin, *irq2in; //input files
 FILE *dmemout, *regout, *trace, *hwregtrace, *cycles, *leds, *display7seg, *diskout, *monitortxt, *monitoryuv; //output files
 
@@ -110,23 +112,77 @@ bool init_mem(){
 		strcpy(mem[row], buffer);
 		row++;
 	}//where can we check for errors?
+    furthestaddresswritten = row;
     return true;
 }
 
-bool init_disk(){
+bool init_disk(){//todo
     char buffer[MEM_WDT];
-	int row = 0;
+	int sector = 0;
+    int row = 0;
 	//for every line of code inputed:
 	while (fgets(buffer, sizeof(buffer), diskin) != NULL) {
 		//translate instruction to hex code:
-		strcpy(disk[row], buffer);
+		strcpy(disk[sector][row], buffer);
 		row++;
+        if (row == SECTOR_SIZE){
+            row = 0;
+            sector++;
+        }
 	}//where can we check for errors?
+    furthestsectorwritten = sector;
+    sectordepth = row;
     return true;
 }
 
-bool init_misc(){
+void get_next_irq2(){
+    char buffer[MAX_LINE_LEN] = NULL;
+    char* err = fgets(buffer, sizeof(buffer), irq2in);
+    if (err == NULL){
+        havenextirq2 = false;
+        return;
+    }
+    havenextirq2 = true;
+    nextirq2 = strtol(buffer, NULL, 0);
+}
 
+bool init_misc(){
+    int i = 0;
+
+    for (i; i < 16; i++){
+        regs[i] = "00000000";
+    }
+    
+    for (i = 0; i < 6 ; i++){
+        IO[i] = "0"; //1 bit
+    }
+    for (i = 6; i < 8 ; i++){
+        IO[i] = "000"; //12 bit
+    }
+    for (i = 8; i < 11 ; i++){
+        IO[i] = "00000000"; //32 bit
+    }
+    for (i = 12; i < 14 ; i++){
+        IO[i] = "00000000"; //32 bit
+    }
+    
+    IO[11] = "0"; //1 bit
+    IO[14] = "0"; //2 bit
+    IO[15] = "00"; //7 bit
+    IO[16] = "000"; //12 bit
+    IO[17] = "0"; //1 bit
+    IO[18] = "0"; //rsvd
+    IO[19] = "0"; //rsvd
+    IO[20] = "0000"; //16 bit
+    IO[21] = "00"; //8 bit
+    IO[22] = "0"; //1 bit
+    
+
+    get_next_irq2();
+    PC = 0;
+    cyclecount = 0;
+    running = true;
+    return true;
 }
 
 bool init_values(){ //init values of regs, IO, and copy imemin and dmemin into asmcode and mem. return false if failed
