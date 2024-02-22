@@ -10,6 +10,30 @@
 #define SECTOR_SIZE 512 //Bytes
 #define INST_WDT 12 //Bytes
 #define MEM_WDT 8 //Bytes
+
+#define Add 0
+#define Sub 1
+#define Mac 2
+#define And 3
+#define Or 4
+#define Xor 5
+#define Sll 6
+#define Sra 7
+#define Srl 8
+#define Beq 9
+#define Bne 10
+#define Blt 11
+#define Bgt 12
+#define Ble 13
+#define Bge 14
+#define Jal 15
+#define Lw 16
+#define Sw 17
+#define Reti 18
+#define In 19
+#define Out 20
+#define Halt 21
+
 char* asmcode[MAX_NUM_OF_LINES] = { NULL }; //PC will read from this array to get current instruction
 char* mem[MAX_NUM_OF_LINES] = { "00000000" }; //write dmemin here, and output this to dmemout
 int furthestaddresswritten; //so we know when to stop writing "00000000" in dmemout
@@ -201,17 +225,190 @@ bool init_values(){ //init values of regs, IO, and copy imemin and dmemin into a
     return true;
 }
 
+int opcode, rd, rs, rt, rm, imm1, imm2; //the 7 arguments per instruction
+
+void decode_instruction(char* instruction){
+    //opcode: 2 digits, rd: 1 digit, rs: 1 digit, rt: 1 digit, rm: 1 digit, imm1: 3 digits, imm2: 3 digits
+    //000000000000
+    char instructionbytes[INST_WDT + 1];
+    strcpy(instructionbytes, instruction);
+    
+    char* start = instructionbytes + 9;
+    imm2 = strtol(start, NULL, 0);
+    instructionbytes[9] = NULL;
+    
+    start = instructionbytes + 6;
+    imm1 = strtol(start, NULL, 0);
+    instructionbytes[6] = NULL;
+    
+    start -= 1;
+    rm = strtol(start, NULL, 0);
+    instructionbytes[5] = NULL;
+    
+    start -= 1;
+    rt = strtol(start, NULL, 0);
+    instructionbytes[4] = NULL;
+    
+    start -= 1;
+    rs = strtol(start, NULL, 0);
+    instructionbytes[3] = NULL;
+    
+    start -= 1;
+    rd = strtol(start, NULL, 0);
+    instructionbytes[2] = NULL;
+    
+    opcode = strtol(instructionbytes, NULL, 0);
+
+    //not sure if this works, pretty disgusting code
+}
+
+void prepare_instruction(){
+    regs[1] = imm1;//todo: sign extend and cast to string
+    regs[2] = imm2;
+}
+
+void run_instruction(){
+    int val;
+    bool branch;
+    int err;
+    switch (opcode){
+        case Add:
+            val = strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0) + strtol(regs[rm], NULL, 0);
+            err = sprintf(&regs[rd], "%08X", val);
+            if (err < 0){}//handle error?
+            PC++;
+            break;
+        case Sub:
+            val = strtol(regs[rs], NULL, 0) - strtol(regs[rt], NULL, 0) - strtol(regs[rm], NULL, 0);
+            err = sprintf(&regs[rd], "%08X", val);
+            if (err < 0){}//handle error?
+            PC++;
+            break;
+        case Mac:
+            val = strtol(regs[rs], NULL, 0) * strtol(regs[rt], NULL, 0) + strtol(regs[rm], NULL, 0);
+            err = sprintf(&regs[rd], "%08X", val);
+            if (err < 0){}//handle error?
+            PC++;
+            break;
+        case And:
+            val = strtol(regs[rs], NULL, 0) & strtol(regs[rt], NULL, 0) & strtol(regs[rm], NULL, 0);
+            err = sprintf(&regs[rd], "%08X", val);
+            if (err < 0){}//handle error?
+            PC++;
+            break;
+        case Or:
+            val = strtol(regs[rs], NULL, 0) | strtol(regs[rt], NULL, 0) | strtol(regs[rm], NULL, 0);
+            err = sprintf(&regs[rd], "%08X", val);
+            if (err < 0){}//handle error?
+            PC++;
+            break;
+        case Xor:
+            val = strtol(regs[rs], NULL, 0) ^ strtol(regs[rt], NULL, 0) ^ strtol(regs[rm], NULL, 0);
+            err = sprintf(&regs[rd], "%08X", val);
+            if (err < 0){}//handle error?
+            PC++;
+            break;
+        case Sll:
+            val = strtol(regs[rs], NULL, 0) << strtol(regs[rt], NULL, 0);
+            err = sprintf(&regs[rd], "%08X", val);
+            if (err < 0){}//handle error?
+            PC++;
+            break;
+        case Sra:
+            //todo
+            PC++;
+            break;
+        case Srl:
+            //todo
+            PC++;
+            break;
+        case Beq:
+            branch = (strtol(regs[rs], NULL, 0) == strtol(regs[rt], NULL, 0));
+            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            break;
+        case Bne:
+            branch = (strtol(regs[rs], NULL, 0) != strtol(regs[rt], NULL, 0));
+            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            break;
+        case Blt:
+            branch = (strtol(regs[rs], NULL, 0) < strtol(regs[rt], NULL, 0));
+            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            break;
+        case Bgt:
+            branch = (strtol(regs[rs], NULL, 0) > strtol(regs[rt], NULL, 0));
+            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            break;
+        case Ble:
+            branch = (strtol(regs[rs], NULL, 0) <= strtol(regs[rt], NULL, 0));
+            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            break;
+        case Bge:
+            branch = (strtol(regs[rs], NULL, 0) >= strtol(regs[rt], NULL, 0));
+            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            break;
+        case Jal:
+            err = sprintf(&regs[rd], "%08X", PC+1);
+            if (err < 0){}//handle error?   
+            PC = strtol(regs[rm], NULL, 0);
+            break;
+        case Lw:
+            regs[rd] = mem[(strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0)) % MAX_NUM_OF_LINES];
+            val = strtol(regs[rd], NULL, 0) + strtol(regs[rm], NULL, 0);
+            err = sprintf(&regs[rd], "%08X", val);
+            if (err < 0){}//handle error?
+            PC++;
+            break;
+        case Sw:
+            val = strtol(regs[rd], NULL, 0) + strtol(regs[rm], NULL, 0);
+            err = sprintf(&mem[(strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0)) % MAX_NUM_OF_LINES], "%08X", val);
+            if (err < 0){}//handle error?
+            PC++;
+            break;
+        case Reti:
+            PC = strtol(IO[7], NULL, 0);
+            break;
+        case In:
+            handle_input();// todo
+            PC++;
+            break;
+        case Out:
+            handle_output();// todo
+            PC++;
+            break;
+        case Halt:
+            running = false;
+            break;
+        default:
+            return;//invalid opcode. error
+    }
+}
+
 bool run_program(){ //main func that runs while we didn't get HALT instruction
     while(running){
         //split into 4 parts:
+        //write to output files all that is relevant
         //get all args needed from asmcode[PC]: translate from opcode to args
         //run instruction: switch case depending on opcode !!!PC IS UPDATED HERE!!!
         //run all parallel auxilary systems: timer, disk, INTERRUPTS!!! - PC maybe updated here if interrupted
-        //write to output files all that is relevant
-        int opcode, rd, rs, rt, rm, imm1, imm2; //the 7 arguments per instruction
         
+        //pre-instruction
+        if (PC > MAX_NUM_OF_LINES){ break; } // or error?
+        char* codedinst = asmcode[PC];
+        if (codedinst == NULL){ break; } // or error?
+        decode_instruction(codedinst);
+        prepare_instruction();
+        
+        //output
+        //writing to output is here since we want to see the immediates in the trace in regs[1], regs[2] but not anything else we have done
+        write_to_output();
 
+        //instruction
+        run_instruction();
+        
+        //post instruction
+        handle_parallel_systems();
     }
+
 }
 
 bool finalize(){ //release everything for program end and print last things for output files if needed
