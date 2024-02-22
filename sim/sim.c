@@ -7,11 +7,17 @@
 #define MAX_LABEL_LEN 50
 #define MAX_NUM_OF_LINES 4096
 #define NUM_OF_SECTORS 128
-char* asmcode[MAX_NUM_OF_LINES]; //PC will read from this array to get current instruction
-char* mem[MAX_NUM_OF_LINES]; //write dmemin here, and output this to dmemout
+#define INST_WDT 12 //in Bytes
+#define MEM_WDT 8 //in Bytes
+char* asmcode[MAX_NUM_OF_LINES] = { NULL }; //PC will read from this array to get current instruction
+char* mem[MAX_NUM_OF_LINES] = { "00000000" }; //write dmemin here, and output this to dmemout
+int furthestaddresswritten; //so we know when to stop writing "00000000" in dmemout
 char* disk[NUM_OF_SECTORS];
+int furthestsectorwritten; // so we know when to stop writing "00000000" in diskout
 char* regs[16]; //hold regs value, same encoding as in PDF
 char* IO[23]; //hold IO regs value, same encoding as in PDF
+int nextirq2;
+bool havenextirq2;
 int PC;
 int cyclecount;
 bool running = true;
@@ -83,8 +89,60 @@ bool init_files(char* argv[]){ //open all FILE structs. return false if failed
     return true;
 }
 
-bool init_values(){ //init values of regs, IO, and copy imemin and dmemin into asmcode and mem. return false if failed
+bool init_code(){
+    char buffer[INST_WDT];
+	int row = 0;
+	//for every line of code inputed:
+	while (fgets(buffer, sizeof(buffer), imemin) != NULL) {
+		//translate instruction to hex code:
+		strcpy(asmcode[row], buffer);
+		row++;
+	}//where can we check for errors?
+    return true;
+}
 
+bool init_mem(){
+    char buffer[MEM_WDT];
+	int row = 0;
+	//for every line of code inputed:
+	while (fgets(buffer, sizeof(buffer), dmemin) != NULL) {
+		//translate instruction to hex code:
+		strcpy(mem[row], buffer);
+		row++;
+	}//where can we check for errors?
+    return true;
+}
+
+bool init_disk(){
+    char buffer[MEM_WDT];
+	int row = 0;
+	//for every line of code inputed:
+	while (fgets(buffer, sizeof(buffer), diskin) != NULL) {
+		//translate instruction to hex code:
+		strcpy(disk[row], buffer);
+		row++;
+	}//where can we check for errors?
+    return true;
+}
+
+bool init_misc(){
+
+}
+
+bool init_values(){ //init values of regs, IO, and copy imemin and dmemin into asmcode and mem. return false if failed
+    if (!init_code()){
+        return false;
+    }
+    if (!init_mem()){
+        return false;
+    }
+    if (!init_disk()){
+        return false;
+    }
+    if (!init_misc()){
+        return false;
+    }
+    return true;
 }
 
 bool run_program(){ //main func that runs while we didn't get HALT instruction
