@@ -2454,10 +2454,10 @@ __extension__ typedef unsigned long long uintmax_t;
   }
 # 195 "C:/msys64/ucrt64/include/string.h" 2 3
 # 6 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 2
-# 31 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 51 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
 
-# 31 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
-FILE * program, *imein, *dmemin;
+# 51 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+FILE * program, *imemin, *dmemin;
 struct labels {
  char* label_name;
  int label_address;
@@ -2467,132 +2467,186 @@ struct labels {
 struct labels* label;
 
 
-# 40 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 60 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
 _Bool 
-# 40 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 60 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
     is_line_a_label(char* line) {
+    char* end;
  if (line == 
-# 41 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 62 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
             ((void *)0) 
-# 41 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 62 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                  || *line == '\0') {
   return 
-# 42 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 63 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
         0
-# 42 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 63 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
              ;
  }
-
- if (!(('a' <= *line && *line <= 'z') ||
-  ('A' <= *line && *line <= 'Z'))) {
-  return 
-# 47 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
-        0
-# 47 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
-             ;
- }
-
- char* end = line;
+# 73 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+ end = line;
  while (*end != '\0') {
+        if (*end == ':')
+      return 
+# 76 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+            1
+# 76 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+                ;
   end++;
  }
- end--;
 
-
- if (*end != ':') {
-  return 
-# 58 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
-        0
-# 58 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
-             ;
- }
 
  return 
-# 61 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
-       1
-# 61 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
-           ;
+# 81 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+       0
+# 81 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+            ;
 }
 
+
 int save_label(char* name, int address) {
+ char* nam = name;
+ int len = 0;
+ while(*nam != '\0' && *nam != ':'){
+  if (*nam != ' ' && *nam != '\t' && *nam != '\n' && *nam != ':')
+   len++;
+  nam++;
+ }
+ printf("len: %d\n",len);
+
  if (label == 
-# 65 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 95 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
              ((void *)0)
-# 65 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 95 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                  ) {
   label = (struct labels*)malloc(sizeof(struct labels));
   if (label == 
-# 67 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 97 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
               ((void *)0)
-# 67 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 97 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                   )
    return 
-# 68 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 98 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
          1
-# 68 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 98 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                      ;
   label->label_address = address;
-  label->label_name = name;
+  label->label_name = (char*)malloc(sizeof(char) * len);
+  if (label->label_name == 
+# 101 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+                          ((void *)0)
+# 101 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+                              ){return -1;}
+  int i = 0;
+  while (i < len) {
+   if (*name != ' ' && *name != '\t' && *name != '\n' && *name != ':') {
+    label->label_name[i] = *name;
+    i++;
+   }
+   name++;
+  }
+  label->label_name[len] = '\0';
   label->next = 
-# 71 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 111 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
                ((void *)0)
-# 71 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 111 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                    ;
+        printf("saved label: %s\n",label->label_name);
   return 
-# 72 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 113 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
         0
-# 72 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 113 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                     ;
  }
 
  struct labels* tmp = label;
  while (tmp != 
-# 76 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 117 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
               ((void *)0)
-# 76 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 117 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                   ) {
   if (tmp->label_address == address)
    return 
-# 78 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 119 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
          0
-# 78 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 119 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                      ;
   if (tmp->next == 
-# 79 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 120 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
                   ((void *)0)
-# 79 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 120 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                       ) {
    tmp->next = (struct labels*)malloc(sizeof(struct labels));
    if (tmp->next == 
-# 81 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 122 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
                    ((void *)0)
-# 81 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 122 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                        )
     return 
-# 82 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 123 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
           1
-# 82 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 123 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                       ;
    tmp->next->label_address = address;
-   tmp->next->label_name = name;
+   tmp->next->label_name = (char*)malloc(sizeof(char) * len);
+   if (tmp->next->label_name == 
+# 126 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+                               ((void *)0)
+# 126 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+                                   ){return -1;}
+   int i = 0;
+   while (i < len) {
+    if (*name != ' ' && *name != '\t' && *name != '\n' && *name != ':') {
+      tmp->next->label_name[i] = *name;
+      i++;
+     }
+    name++;
+   }
+   tmp->next->label_name[len] = '\0';
    tmp->next->next = 
-# 85 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 136 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
                     ((void *)0)
-# 85 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 136 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                         ;
+            printf("saved label: %s\n",tmp->label_name);
    return 
-# 86 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 138 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
          0
-# 86 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 138 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                      ;
   }
   tmp = tmp->next;
  }
  return 
-# 90 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 142 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
        1
-# 90 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 142 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                    ;
+}
+
+
+struct labels* get_label(char* label_name){
+ struct labels* tmp = label;
+ while (tmp != 
+# 148 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+              ((void *)0)
+# 148 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+                  ) {
+  if ( tmp->label_name != 
+# 149 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+                         ((void *)0) 
+# 149 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+                              && strcmp(tmp->label_name,label_name) == 0)
+   return tmp;
+  printf("%s is not %s\n",tmp->label_name,label_name);
+  tmp = tmp->next;
+ }
+
+ return 
+# 155 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+       ((void *)0)
+# 155 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+           ;
 }
 
 void first_pass() {
@@ -2602,55 +2656,253 @@ void first_pass() {
 
 
  while (fgets(buffer, sizeof(buffer), program) != 
-# 99 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 164 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
                                                  ((void *)0)
-# 99 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 164 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                                                      ) {
+
   if (is_line_a_label(buffer)) {
 
-   save_label(buffer, row + 1);
+            printf("buff: %s\n",buffer);
+   save_label(buffer, row);
+
   }
   else {
+            printf("row: %d\n",row);
    row++;
 
   }
  }
 }
-
-void translate_instruction(char* line) {
- uint64_t instruction = 0;
- char* pch = strtok(line, " ,$");
- while (pch != 
-# 114 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
-              ((void *)0)
-# 114 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
-                  )
- {
-  printf("%s\n", pch);
-  pch = strtok(
-# 117 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
-              ((void *)0)
-# 117 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
-                  , " ,$");
+char* handle_opcode(char** str){
+ if (strcmp(*str, "add") == 0){
+  return "00";
  }
+ else if (strcmp(*str, "sub") == 0){
+  return "01";
+ }
+ else if (strcmp(*str, "mac") == 0){
+  return "02";
+ }
+ else if (strcmp(*str, "and") == 0){
+  return "03";
+ }
+ else if (strcmp(*str, "or") == 0){
+  return "04";
+ }
+ else if (strcmp(*str, "xor") == 0){
+  return "05";
+ }
+ else if (strcmp(*str, "sll") == 0){
+  return "06";
+ }
+ else if (strcmp(*str, "sra") == 0){
+  return "07";
+ }
+ else if (strcmp(*str, "srl") == 0){
+  return "08";
+ }
+ else if (strcmp(*str, "beq") == 0){
+  return "09";
+ }
+ else if (strcmp(*str, "bne") == 0){
+  return "0A";
+ }
+ else if (strcmp(*str, "blt") == 0){
+  return "0B";
+ }
+ else if (strcmp(*str, "bgt") == 0){
+  return "0C";
+ }
+ else if (strcmp(*str, "ble") == 0){
+  return "0D";
+ }
+ else if (strcmp(*str, "bge") == 0){
+  return "0E";
+ }
+ else if (strcmp(*str, "jal") == 0){
+  return "0F";
+ }
+ else if (strcmp(*str, "lw") == 0){
+  return "10";
+ }
+ else if (strcmp(*str, "sw") == 0){
+  return "11";
+ }
+ else if (strcmp(*str, "reti") == 0){
+  return "12";
+ }
+ else if (strcmp(*str, "in") == 0){
+  return "13";
+ }
+ else if (strcmp(*str, "out") == 0){
+  return "14";
+ }
+ else if (strcmp(*str, "halt") == 0){
+  return "15";
+ }
+ else {
+  return 
+# 247 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+        ((void *)0)
+# 247 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+            ;
+ }
+}
+
+char* handle_register(char** str){
+ if (strcmp(*str, "$zero") == 0){
+  return "0";
+ }
+ else if (strcmp(*str, "$imm1") == 0){
+  return "1";
+ }
+ else if (strcmp(*str, "$imm2") == 0){
+  return "2";
+ }
+ else if (strcmp(*str, "$v0") == 0){
+  return "3";
+ }
+ else if (strcmp(*str, "$a0") == 0){
+  return "4";
+ }
+ else if (strcmp(*str, "$a1") == 0){
+  return "5";
+ }
+ else if (strcmp(*str, "$a2") == 0){
+  return "6";
+ }
+ else if (strcmp(*str, "$t0") == 0){
+  return "7";
+ }
+ else if (strcmp(*str, "$t1") == 0){
+  return "8";
+ }
+ else if (strcmp(*str, "$t2") == 0){
+  return "9";
+ }
+ else if (strcmp(*str, "$s0") == 0){
+  return "A";
+ }
+ else if (strcmp(*str, "$s1") == 0){
+  return "B";
+ }
+ else if (strcmp(*str, "$s2") == 0){
+  return "B";
+ }
+ else if (strcmp(*str, "$gp") == 0){
+  return "D";
+ }
+ else if (strcmp(*str, "$sp") == 0){
+  return "E";
+ }
+ else if (strcmp(*str, "$ra") == 0){
+  return "F";
+ }
+ else{
+  return 
+# 301 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+        ((void *)0)
+# 301 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+            ;
+ }
+}
+
+void handle_immediate(char* str, char* hex){
+ struct labels* lbl = get_label(str);
+ if (lbl != 
+# 307 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+           ((void *)0)
+# 307 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+               ){
+  printf("lbl: %s\n", lbl->label_name);
+  snprintf(hex, 12,"%3X", lbl->label_address);
+  for (int i = 0; i < 3; i++){
+   if (hex[i] == ' ')
+    hex[i] = '0';
+  }
+  return;
+ }
+
+ int strvalue = strtol(str, 
+# 317 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+                           ((void *)0)
+# 317 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+                               , 10);
+ snprintf(hex, 12,"%3X", strvalue);
+ for (int i = 0; i < 3; i++){
+  if (hex[i] == ' ')
+   hex[i] = '0';
+ }
+ return;
+}
+
+char* translate_instruction(char* line) {
+ int wordnum = 0;
+ char instruction[48] = "";
+ char* pch = "";
+ char immediate[3];
+ for (wordnum = 0; wordnum < 7; wordnum++){
+  if (wordnum == 0){
+   line = line+1;
+   pch = strtok(line, "\t, $");
+  }else{
+   pch = strtok(
+# 336 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+               ((void *)0)
+# 336 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+                   , ", #");
+    printf("%d strtok pch:%s\n",wordnum,pch);
+  }
+  if (wordnum == 0){
+   strcat(instruction, handle_opcode(&pch));
+    printf("%s @@@\n",instruction);
+  }
+   else if (1 <= wordnum && wordnum <= 4){
+   strcat(instruction, handle_register(&pch));
+    printf("%s @@@\n",instruction);
+  }
+  else{
+   handle_immediate(pch, immediate);
+
+   strcat(instruction, immediate);
+    printf("%s ###\n",instruction);
+  }
+ }
+ printf("%s\n",instruction);
+ return 
+# 355 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+       ((void *)0)
+# 355 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+           ;
+}
+
+void writetoimemin(char* nextline, int row){
+
+ return;
 }
 
 void second_pass() {
 
 
  char buffer[500];
+ char* nextline;
  int row = 0;
 
  while (fgets(buffer, sizeof(buffer), program) != 
-# 127 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 370 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
                                                  ((void *)0)
-# 127 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 370 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                                                      ) {
   if (!is_line_a_label(buffer)) {
-   row++;
 
-   translate_instruction(buffer);
+   printf("translating row %d\n",row);
+   nextline = translate_instruction(buffer);
+   writetoimemin(nextline, row);
+   row++;
   }
+  if (row >= 3)
+   break;
  }
 }
 
@@ -2659,63 +2911,63 @@ int main(int argc, char* argv[]) {
 
  if (argc != 4) {
   return 
-# 140 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 387 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
         1
-# 140 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 387 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                     ;
  }
  program = fopen(argv[1], "r");
  if (program == 
-# 143 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 390 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
                ((void *)0)
-# 143 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 390 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                    ) {
   return 
-# 144 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 391 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
         1
-# 144 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 391 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                     ;
  }
 
- imein = fopen(argv[2], "w");
- if (imein == 
-# 148 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
-             ((void *)0)
-# 148 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
-                 ) {
+ imemin = fopen(argv[2], "w");
+ if (imemin == 
+# 395 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+              ((void *)0)
+# 395 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+                  ) {
   return 
-# 149 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 396 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
         1
-# 149 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 396 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                     ;
  }
  dmemin = fopen(argv[3], "w");
  if (dmemin == 
-# 152 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 399 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
               ((void *)0)
-# 152 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 399 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                   ) {
   return 
-# 153 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 400 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
         1
-# 153 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 400 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                     ;
  }
 
 
 
  first_pass();
-
+ printf("First pass is done.\n");
  program = fopen(argv[1], "r");
  if (program == 
-# 161 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
+# 408 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3 4
                ((void *)0)
-# 161 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 408 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                    ) {
   return 
-# 162 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
+# 409 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c" 3
         1
-# 162 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
+# 409 "C:\\Users\\Dan\\Documents\\GitHub\\Mivne-Mahshev-Project-1\\asm\\asm.c"
                     ;
  }
 
