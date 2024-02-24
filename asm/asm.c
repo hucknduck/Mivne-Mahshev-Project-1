@@ -391,6 +391,17 @@ void second_pass() {
 	}
 }
 
+void free_labels(){
+	struct labels* tmp = label;
+	struct labels* tmp_next = label;
+	while(tmp != NULL){
+		tmp_next = tmp->next;
+		free(tmp->label_name);
+		free(tmp);
+		tmp = tmp_next;
+	}
+}
+
 int main(int argc, char* argv[]) {
 	/*command-line parsing */
 	/*asm.exe program.asm imemin.txt dmemin.txt*/
@@ -421,11 +432,12 @@ int main(int argc, char* argv[]) {
 	}
 
 	second_pass();
-
+	
 	//todo free the linked list
 	fclose(program);
 	fclose(imemin);
 	fclose(dmemin);
 
+	free_labels();
 	return 0;
 }
