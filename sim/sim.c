@@ -262,64 +262,102 @@ void decode_instruction(char* instruction){
     //not sure if this works, pretty disgusting code
 }
 
+char * SignExtendImmediate(int immediate){
+    char * out;
+    int err;
+    err = sprintf(out, "%3X", immediate);//immediates are 12 bits = 3 hex digits
+    if (err < 0){}//handle error?
+    bool ShouldExtend = (out[0] == '9' || out[0] == '8');
+    ShouldExtend |= (out[0] >= 'A' && out[0] <= 'F');
+    ShouldExtend |= (out[0] >= 'a' && out[0] <= 'f');
+    if (ShouldExtend){ //we checked if MSB is 1
+        out = strcat("FFFFF", out);
+    }
+    else {
+        out = strcat("00000", out);
+    }
+    return out;
+}
+
 void prepare_instruction(){
-    regs[1] = imm1;//todo: sign extend and cast to string
-    regs[2] = imm2;
+    regs[1] = SignExtendImmediate(imm1);
+    regs[2] = SignExtendImmediate(imm2);
 }
 
 void run_instruction(){
     int val;
     bool branch;
+    bool rdiswritable = !(rd == 0 || rd == 1 || rd == 2);//false when trying to write to $zero or $imm1,2
     int err;
     switch (opcode){
         case Add:
             val = strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0) + strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            };
             PC++;
             break;
         case Sub:
             val = strtol(regs[rs], NULL, 0) - strtol(regs[rt], NULL, 0) - strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Mac:
             val = strtol(regs[rs], NULL, 0) * strtol(regs[rt], NULL, 0) + strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case And:
             val = strtol(regs[rs], NULL, 0) & strtol(regs[rt], NULL, 0) & strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {    
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Or:
             val = strtol(regs[rs], NULL, 0) | strtol(regs[rt], NULL, 0) | strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Xor:
             val = strtol(regs[rs], NULL, 0) ^ strtol(regs[rt], NULL, 0) ^ strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Sll:
             val = strtol(regs[rs], NULL, 0) << strtol(regs[rt], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Sra:
-            //todo
+            
+            if (rdiswritable) {
+                //todo
+            }
             PC++;
             break;
         case Srl:
             //todo
+            if (rdiswritable) {
+            
+            }
             PC++;
             break;
         case Beq:
@@ -347,15 +385,19 @@ void run_instruction(){
             PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
             break;
         case Jal:
-            err = sprintf(&regs[rd], "%08X", PC+1);
-            if (err < 0){}//handle error?   
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", PC+1);
+                if (err < 0){}//handle error?   
+            }
             PC = strtol(regs[rm], NULL, 0);
             break;
         case Lw:
-            regs[rd] = mem[(strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0)) % MAX_NUM_OF_LINES];
-            val = strtol(regs[rd], NULL, 0) + strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                regs[rd] = mem[(strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0)) % MAX_NUM_OF_LINES];
+                val = strtol(regs[rd], NULL, 0) + strtol(regs[rm], NULL, 0);
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Sw:
@@ -368,7 +410,9 @@ void run_instruction(){
             PC = strtol(IO[7], NULL, 0);
             break;
         case In:
-            handle_input();// todo
+            if (rdiswritable) {
+                handle_input();// todo
+            }
             PC++;
             break;
         case Out:
