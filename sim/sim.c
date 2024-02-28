@@ -13,6 +13,9 @@
 #define NUM_OF_REGS 16
 #define NUM_OF_IO_REGS 23
 
+#define DISPLAY7SEGREG 10
+#define LEDSREG 9
+
 #define Add 0
 #define Sub 1
 #define Mac 2
@@ -277,17 +280,30 @@ void write2hwtrace(char* rw, int IOnum){
 }
 
 void handle_input(){
-    int regnum = 0;
-
-    //conditionally write to led.txt or 7seg.txt
+    int regnum = strtol(regs[rt], NULL, 16) + strtol(regs[rs], NULL, 16);
+    if (regnum > 22 || regnum < 0){return;}//out of bounds
+    regs[rd] = IO[regnum];
     write2hwtrace("READ", regnum);
 }
 
 void handle_output(){
-    int regnum = 0;
-
+    int regnum = strtol(regs[rt], NULL, 16) + strtol(regs[rs], NULL, 16);
+    if (regnum > 22 || regnum < 0){return;}//out of bounds
+    bool cantwrite = (regnum == 3 || regnum == 4 || regnum == 5 || regnum == 17 || regnum == 18 || regnum == 19);//irq or rsvd or diskstatus
+    if (!cantwrite){ return; }
+    IO[regnum] = regs[rd];
     //conditionally write to led.txt or 7seg.txt
     write2hwtrace("WRITE", regnum);
+    switch (regnum){
+        case DISPLAY7SEGREG:
+            write2hw7seg();
+            break;
+        case LEDSREG:
+            write2hwleds();
+            break;
+        default:
+            break;
+    }
 }
 
 void write2disk(){
@@ -348,7 +364,7 @@ void update_irq(){ // check the irq status and update. only turns them on, the I
 
 void update_timer(){ 
     int tmp;
-    if IO[11] == "1"{
+    if (IO[11] == "1"){//todo: change to strcmp
         if (timer == max_timer)
         {
             timer = 0;
