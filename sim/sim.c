@@ -42,10 +42,13 @@ int furthestsectorwritten; // so we know when to stop writing "00000000" in disk
 int sectordepth;
 char* regs[16]; //hold regs value, same encoding as in PDF
 char* IO[23]; //hold IO regs value, same encoding as in PDF
+bool irq;
 int nextirq2;
 bool havenextirq2;
 int PC;
 int cyclecount;
+int timer;
+int max_timer;
 bool running;
 FILE *imemin, *dmemin, *diskin, *irq2in; //input files
 FILE *dmemout, *regout, *trace, *hwregtrace, *cycles, *leds, *display7seg, *diskout, *monitortxt, *monitoryuv; //output files
@@ -266,6 +269,47 @@ void prepare_instruction(){
     regs[1] = imm1;//todo: sign extend and cast to string
     regs[2] = imm2;
 }
+void update_irq(){
+    if (timer == 0)
+    {
+        IO[3] = "1";
+    }
+    if (IO[14] == "0" && IO[17] == "0")
+    {
+        IO[4] = "1";
+    }
+    if (cyclecount == nextirq2)
+    {
+        IO[5] = "1";
+        get_next_irq2(); 
+    }
+    else{
+        IO[5] = "0";
+    }
+    irq = (IO[0] == "1" && IO[3] == "1") || (IO[1] == "1" && IO[4] == "1") || (IO[2] == "1" && IO[5] == "1");
+
+    return;
+}
+
+void update_timer(){ 
+    int tmp;
+    if IO[11] == "1"{
+        if (timer == max_timer)
+        {
+            timer = 0;
+            IO[12] = "00000000"
+        }
+        else{
+            timer++;
+            sprintf(IO[12],"%x", timer); // update timecurrent
+        }
+        return;
+    }
+    else{
+        return;
+    }
+}
+
 
 void run_instruction(){
     int val;
@@ -407,6 +451,10 @@ bool run_program(){ //main func that runs while we didn't get HALT instruction
         
         //post instruction
         handle_parallel_systems();
+        cyclecount++;
+        update_timer();
+        update_irq();
+
     }
 
 }
