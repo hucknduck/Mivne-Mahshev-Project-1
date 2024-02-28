@@ -49,6 +49,7 @@ int nextirq2;
 bool havenextirq2;
 int PC;
 int cyclecount;
+int disk_timer;
 int timer;
 int max_timer;
 bool running;
@@ -288,22 +289,57 @@ void handle_output(){
     //conditionally write to led.txt or 7seg.txt
     write2hwtrace("WRITE", regnum);
 }
-void update_irq(){
-    if (timer == 0)
+
+void write2disk(){
+    long sector;
+    long MEMaddress;
+    int i;
+    sector = strtol(IO[15], NULL, 16); // sector that we write to in decimal
+    MEMaddress = strtol(IO[16], NULL, 16); // address of the buffer in the main memory that we read from in decimal
+    for (i = 0; i < 128; i++){
+        disk[sector][i] = mem[MEMaddress];
+        MEMaddress++;
+    }
+    IO[14] = "00";
+}
+
+void read_from_disk(){
+    long sector;
+    long MEMaddress;
+    int i;
+    sector = strtol(IO[15], NULL, 16); // sector that we read from in decimal
+    MEMaddress = strtol(IO[16], NULL, 16); // address of the buffer in the main memory that we write to in decimal
+    for (i = 0; i < 128; i++)
+    {
+        mem[MEMaddress] = disk[sector][i];
+        MEMaddress++;
+    }
+    IO[14] = "00";
+}
+
+void update_disk_timer(){
+    if (IO[14] = "00" && IO[17] == "1") // if we executed the read/write command we wait 1024 cycles while the disk is busy
+    {
+        disk_timer++;
+    }
+    
+}
+
+void update_irq(){ // check the irq status and update. only turns them on, the ISR needs to turn them off.
+    if (timer == 0) // irq0
     {
         IO[3] = "1";
     }
-    if (IO[14] == "0" && IO[17] == "0")
+    if (disk_timer == 1024 && IO[17] == "1") // irq1
     {
-        IO[4] = "1";
+        IO[4] = "1"; 
+        disk_timer = 0;
+        IO[17] == "0";
     }
-    if (cyclecount == nextirq2)
+    if (cyclecount == nextirq2) // irq2
     {
         IO[5] = "1";
         get_next_irq2(); 
-    }
-    else{
-        IO[5] = "0";
     }
     irq = (IO[0] == "1" && IO[3] == "1") || (IO[1] == "1" && IO[4] == "1") || (IO[2] == "1" && IO[5] == "1");
 
@@ -510,11 +546,12 @@ bool run_program(){ //main func that runs while we didn't get HALT instruction
 
         //instruction
         run_instruction();
-        
+
         //post instruction
         handle_parallel_systems();
         cyclecount++;
         update_timer();
+        update_disk_timer();
         update_irq();
 
     }
