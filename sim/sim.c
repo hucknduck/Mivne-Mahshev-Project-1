@@ -10,6 +10,8 @@
 #define SECTOR_SIZE 512 //Bytes
 #define INST_WDT 12 //Bytes
 #define MEM_WDT 8 //Bytes
+#define NUM_OF_REGS 16
+#define NUM_OF_IO_REGS 23
 
 #define Add 0
 #define Sub 1
@@ -40,8 +42,8 @@ int furthestaddresswritten; //so we know when to stop writing "00000000" in dmem
 char* disk[NUM_OF_SECTORS][SECTOR_SIZE];
 int furthestsectorwritten; // so we know when to stop writing "00000000" in diskout
 int sectordepth;
-char* regs[16]; //hold regs value, same encoding as in PDF
-char* IO[23]; //hold IO regs value, same encoding as in PDF
+char* regs[NUM_OF_REGS]; //hold regs value, same encoding as in PDF
+char* IO[NUM_OF_IO_REGS]; //hold IO regs value, same encoding as in PDF
 bool irq;
 int nextirq2;
 bool havenextirq2;
@@ -174,36 +176,14 @@ void get_next_irq2(){
 }
 
 bool init_misc(){
-    int i = 0;
-
-    for (i; i < 16; i++){
+    int i;
+    for (i = 0; i < NUM_OF_REGS; i++){
         regs[i] = "00000000";
     }
     
-    for (i = 0; i < 6 ; i++){
-        IO[i] = "0"; //1 bit
+    for (i = 0; i < NUM_OF_IO_REGS ; i++){
+        IO[i] = "00000000";
     }
-    for (i = 6; i < 8 ; i++){
-        IO[i] = "000"; //12 bit
-    }
-    for (i = 8; i < 11 ; i++){
-        IO[i] = "00000000"; //32 bit
-    }
-    for (i = 12; i < 14 ; i++){
-        IO[i] = "00000000"; //32 bit
-    }
-    
-    IO[11] = "0"; //1 bit
-    IO[14] = "0"; //2 bit
-    IO[15] = "00"; //7 bit
-    IO[16] = "000"; //12 bit
-    IO[17] = "0"; //1 bit
-    IO[18] = "0"; //rsvd
-    IO[19] = "0"; //rsvd
-    IO[20] = "0000"; //16 bit
-    IO[21] = "00"; //8 bit
-    IO[22] = "0"; //1 bit
-    
 
     get_next_irq2();
     PC = 0;
@@ -265,9 +245,48 @@ void decode_instruction(char* instruction){
     //not sure if this works, pretty disgusting code
 }
 
+char * sign_extend_immediate(int immediate){
+    char * out;
+    int err;
+    err = sprintf(out, "%3X", immediate);//immediates are 12 bits = 3 hex digits
+    if (err < 0){}//handle error?
+    bool ShouldExtend = (out[0] == '9' || out[0] == '8');
+    ShouldExtend |= (out[0] >= 'A' && out[0] <= 'F');
+    ShouldExtend |= (out[0] >= 'a' && out[0] <= 'f');
+    if (ShouldExtend){ //we checked if MSB is 1
+        out = strcat("FFFFF", out);
+    }
+    else {
+        out = strcat("00000", out);
+    }
+    return out;
+}
+
 void prepare_instruction(){
-    regs[1] = imm1;//todo: sign extend and cast to string
-    regs[2] = imm2;
+    regs[1] = sign_extend_immediate(imm1);
+    regs[2] = sign_extend_immediate(imm2);
+}
+
+void write2hwtrace(char* rw, int IOnum){
+    char* strtowrite;
+    char* IOreg = get_IO_reg_name();
+    int err = sprintf(strtowrite, "%d %s %s %s\n", cyclecount, rw, IOreg, IO[IOnum]);
+    if (err < 0){}//handle error?
+    fprintf(trace, strtowrite);
+}
+
+void handle_input(){
+    int regnum = 0;
+
+    //conditionally write to led.txt or 7seg.txt
+    write2hwtrace("READ", regnum);
+}
+
+void handle_output(){
+    int regnum = 0;
+
+    //conditionally write to led.txt or 7seg.txt
+    write2hwtrace("WRITE", regnum);
 }
 void update_irq(){
     if (timer == 0)
@@ -314,56 +333,75 @@ void update_timer(){
 void run_instruction(){
     int val;
     bool branch;
+    bool rdiswritable = !(rd == 0 || rd == 1 || rd == 2);//false when trying to write to $zero or $imm1,2
     int err;
     switch (opcode){
         case Add:
             val = strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0) + strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            };
             PC++;
             break;
         case Sub:
             val = strtol(regs[rs], NULL, 0) - strtol(regs[rt], NULL, 0) - strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Mac:
             val = strtol(regs[rs], NULL, 0) * strtol(regs[rt], NULL, 0) + strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case And:
             val = strtol(regs[rs], NULL, 0) & strtol(regs[rt], NULL, 0) & strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {    
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Or:
             val = strtol(regs[rs], NULL, 0) | strtol(regs[rt], NULL, 0) | strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Xor:
             val = strtol(regs[rs], NULL, 0) ^ strtol(regs[rt], NULL, 0) ^ strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Sll:
             val = strtol(regs[rs], NULL, 0) << strtol(regs[rt], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Sra:
-            //todo
+            if (rdiswritable) {
+                //todo
+            }
             PC++;
             break;
         case Srl:
-            //todo
+            if (rdiswritable) {
+                //todo
+            }
             PC++;
             break;
         case Beq:
@@ -391,15 +429,19 @@ void run_instruction(){
             PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
             break;
         case Jal:
-            err = sprintf(&regs[rd], "%08X", PC+1);
-            if (err < 0){}//handle error?   
+            if (rdiswritable) {
+                err = sprintf(&regs[rd], "%08X", PC+1);
+                if (err < 0){}//handle error?   
+            }
             PC = strtol(regs[rm], NULL, 0);
             break;
         case Lw:
-            regs[rd] = mem[(strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0)) % MAX_NUM_OF_LINES];
-            val = strtol(regs[rd], NULL, 0) + strtol(regs[rm], NULL, 0);
-            err = sprintf(&regs[rd], "%08X", val);
-            if (err < 0){}//handle error?
+            if (rdiswritable) {
+                regs[rd] = mem[(strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0)) % MAX_NUM_OF_LINES];
+                val = strtol(regs[rd], NULL, 0) + strtol(regs[rm], NULL, 0);
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
+            }
             PC++;
             break;
         case Sw:
@@ -412,7 +454,9 @@ void run_instruction(){
             PC = strtol(IO[7], NULL, 0);
             break;
         case In:
-            handle_input();// todo
+            if (rdiswritable) {
+                handle_input();// todo
+            }
             PC++;
             break;
         case Out:
@@ -427,6 +471,23 @@ void run_instruction(){
     }
 }
 
+void output2trace(){
+    char* strtowrite;
+    int err;
+    err = sprintf(strtowrite, "%03X %s", PC, asmcode[PC]);
+    if (err < 0){}//handle error?
+    for (int i = 0; i < NUM_OF_REGS; i++){
+        strcat(strtowrite, regs[i]);
+    }
+    strcat(strtowrite, "\n");
+    fprintf(trace, strtowrite);
+}
+
+void write_to_output(){
+    //conditional write: *hwregtrace, *leds, *display7seg,
+    //write at end: *dmemout, *regout,   *cycles,   *diskout, *monitortxt, *monitoryuv;
+}
+
 bool run_program(){ //main func that runs while we didn't get HALT instruction
     while(running){
         //split into 4 parts:
@@ -437,14 +498,15 @@ bool run_program(){ //main func that runs while we didn't get HALT instruction
         
         //pre-instruction
         if (PC > MAX_NUM_OF_LINES){ break; } // or error?
-        char* codedinst = asmcode[PC];
+        char* codedinst;
+        strcpy(codedinst, asmcode[PC]);
         if (codedinst == NULL){ break; } // or error?
         decode_instruction(codedinst);
         prepare_instruction();
         
         //output
         //writing to output is here since we want to see the immediates in the trace in regs[1], regs[2] but not anything else we have done
-        write_to_output();
+        output2trace();
 
         //instruction
         run_instruction();
