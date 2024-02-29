@@ -79,22 +79,15 @@ bool is_line_a_label(char* line) { // examples: L4:, Olnmfda:, L1:
 	if (line == NULL || *line == '\0') {
 		return false;
 	}
-	// Check if the first char is not a letter:
-
-	// if (!(('a' <= *line && *line <= 'z') ||
-	// 	('A' <= *line && *line <= 'Z'))) {
-    //     printf("%s is not a letter",*line);
-	// 	return false;
-	// }
-	// Find the end of the string
+	
 	end = line;
 	while (*end != '\0') {
+		if (*end == '#') 
+		    return false; // If The semicolon appears after a comment it doesn't count
         if (*end == ':') 
 		    return true; // If not, return false
 		end++;
 	}
-	
-
 	return false;
 }
 
@@ -126,7 +119,7 @@ int save_label(char* name, int address) {
 		}
 		label->label_name[len] = '\0';
 		label->next = NULL;
-       // printf("saved label: %s\n",label->label_name);
+       //printf("saved label: %s\n",label->label_name);
 		return EXIT_SUCCESS;
 	}
 
@@ -351,6 +344,7 @@ char* handle_register(char** str){
 }
 
 void handle_immediate(char* str, char* hex){
+	int base_ten = 10;
 	struct labels* lbl = get_label(str);
 	if (lbl != NULL){ // If it's a label
 		//printf("lbl: %s\n", lbl->label_name);
@@ -362,7 +356,9 @@ void handle_immediate(char* str, char* hex){
 		return;
 	}
 	//else, return value of immediate in hex, 12B length
-	int strvalue = strtol(str, NULL, 10); // convert to decimal
+	if (*str == '0')
+		base_ten = 0; //just tells the strtol that the string is written with 0x before the number
+	int strvalue = strtol(str, NULL, base_ten); // convert to decimal
 	snprintf(hex, 12,"%3X", strvalue); //THIS FUNC CONTAINS IMPLICIT MALLOC, MEM IS FREED IN translate_instruction()
 	for (int i = 0; i < 3; i++){
 		if (hex[i] == ' ')
@@ -409,6 +405,23 @@ void writetoimemin(char* nextline, int row){
 	fputs( "\n", imemin );
 }
 
+bool is_empty_line_or_comment(char* line){
+	if (*line == '\n')
+		return true;
+	char* comment_ptr = strstr(line, "#");
+	if (comment_ptr == NULL)
+		return false; // not a comment
+	while (line < comment_ptr){
+		if (*line == ' ' ||
+			*line == '\t'){
+				line++;
+			}
+		else 
+			return false; 
+	}
+	return true;
+}
+
 void second_pass() {
 	/* the second pass already has the linked list of all the lables,
 	now we can create the two output files.*/
@@ -416,7 +429,7 @@ void second_pass() {
 	int row = 0;
 	//for every line of code inputed:
 	while (fgets(buffer, sizeof(buffer), program) != NULL) {
-		if (!is_line_a_label(buffer) && !is_line_dot_word(buffer)) {
+		if (!is_line_a_label(buffer) && !is_line_dot_word(buffer) && !is_empty_line_or_comment(buffer)) {
 			//translate instruction to hex code:
 			//printf("translating row %d\n",row);
 			char* instruction = (char*) calloc(sizeof(char),48); // todo add check
@@ -508,5 +521,6 @@ int main(int argc, char* argv[]) {
 	fclose(dmemin);
 
 	free_labels();
+	printf("Done\n");
 	return 0;
 }
