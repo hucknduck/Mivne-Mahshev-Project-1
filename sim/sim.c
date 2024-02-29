@@ -44,7 +44,6 @@ char* mem[MAX_NUM_OF_LINES] = { "00000000" }; //write dmemin here, and output th
 int furthestaddresswritten; //so we know when to stop writing "00000000" in dmemout
 char* disk[NUM_OF_SECTORS][SECTOR_SIZE];
 int furthestsectorwritten; // so we know when to stop writing "00000000" in diskout
-int sectordepth;
 char* regs[NUM_OF_REGS]; //hold regs value, same encoding as in PDF
 char* IO[NUM_OF_IO_REGS]; //hold IO regs value, same encoding as in PDF
 bool irq;
@@ -248,7 +247,6 @@ bool init_disk(){//todo
         }
 	}//where can we check for errors?
     furthestsectorwritten = sector;
-    sectordepth = row;
     return true;
 }
 
@@ -293,27 +291,24 @@ void write2hwtrace(char* rw, int IOnum) {
 }
 
 void write2hw7seg(){
-    fprintf(display7seg, "%d %s", cyclecount, IO[DISPLAY7SEGREG]);
+    fprintf(display7seg, "%d %s\n", cyclecount, IO[DISPLAY7SEGREG]);
 }
 
 void write2hwleds{
-    fprintf(leds, "%d %s", cyclecount, IO[LEDSREG]);
+    fprintf(leds, "%d %s\n", cyclecount, IO[LEDSREG]);
 }
 
 void output2trace(){
-    char* strtowrite;
-    int err;
-    err = sprintf(strtowrite, "%03X %s", PC, asmcode[PC]);
-    if (err < 0){}//handle error?
-    for (int i = 0; i < NUM_OF_REGS; i++){
-        strcat(strtowrite, regs[i]);
-    }
-    strcat(strtowrite, "\n");
-    fprintf(trace, strtowrite);
+    fprintf(trace, "%03X %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n", PC, asmcode[PC], regs[0], regs[1], regs[2], regs[3], regs[4], regs[5], regs[6], regs[7], regs[8], regs[9], regs[10], regs[11], regs[12], regs[13], regs[14], regs[15]);
 }
 
 void write_to_output(){
     //write at end: *dmemout, *regout,   *cycles,   *diskout, *monitortxt, *monitoryuv;
+    write2dmemout();
+    write2regout();
+    write2cycles();
+    write2diskout();
+    write2monitor();
 }
 
 //-------------------------------------------------------- CPU RUN -------------------------------------------------//
@@ -531,7 +526,6 @@ void run_instruction(){
 
  //---------------------------------------------- PERIPHERALS --------------------------------------//
 
-
 void write2disk(){
     long sector;
     long MEMaddress;
@@ -629,6 +623,22 @@ bool run_program(){ //main func that runs while we didn't get HALT instruction
 }
 
 //------------------------------------FINALIZE-------------------------------------------//
+void close_files(){
+    fclose(imemin);
+	fclose(dmemin);
+	fclose(diskin);
+	fclose(irq2in);
+	fclose(dmemout);
+	fclose(regout);
+	fclose(trace);
+	fclose(hwregtrace);
+	fclose(cycles);
+	fclose(leds);
+	fclose(display7seg);
+	fclose(diskout);
+	fclose(monitortxt);
+	fclose(monitoryuv);
+}
 
 bool finalize(){ //release everything for program end and print last things for output files if needed
     write_to_output();
