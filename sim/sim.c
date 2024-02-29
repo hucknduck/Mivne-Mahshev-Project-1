@@ -593,12 +593,11 @@ void run_instruction(){
 
 //---------------------------------------------- PERIPHERALS --------------------------------------//
 void write2disk(){
-    char* temp[9];
     int sector;
     int MEMaddress;
     int i;
-    sector = atoi(sprintf(temp,"%d" , strtol(IO[15], NULL, 16))); // sector that we write to in decimal
-    MEMaddress = atoi(sprintf(temp, "%d", strtol(IO[16], NULL, 16))); // address of the buffer in the main memory that we read from in decimal
+    sector = strtol(IO[15], NULL, 16); // sector that we write to in decimal
+    MEMaddress = strtol(IO[16], NULL, 16); // address of the buffer in the main memory that we read from in decimal
     for (i = 0; i < 128; i++) {
         disk[sector][i] = mem[MEMaddress];
         MEMaddress++;
@@ -631,7 +630,7 @@ void update_irq(){ // check the irq status and update. only turns them on, the I
         strcpy(IO[3], "00000001");
     }
     if (disk_timer == 1024 && strcmp(IO[17], "00000001") == 0) {// irq1
-        IO[4] = "00000001"; 
+        strcpy(IO[4], "00000001"); 
         disk_timer = 0;
         strcpy(IO[17], "00000000");
     }
@@ -642,9 +641,8 @@ void update_irq(){ // check the irq status and update. only turns them on, the I
     irq = ((strcmp(IO[0],"00000001") == 0 && strcmp(IO[3], "00000001") == 0) || (strcmp(IO[1], "00000001") == 0 && strcmp(IO[4], "00000001") == 0) || (strcmp(IO[2], "00000001") == 0 && strcmp(IO[5], "00000001") == 0));
 }
 void handle_irq(){ // go to ISR and handle 
-    char* temp[9];
-    sprintf(IO[7], "%X", PC);
-    PC = atoi(sprintf(temp,"%d" , strtol(IO[6], NULL, 16)));
+    sprintf(IO[7], "%08X", PC);
+    PC = strtol(IO[6], NULL, 16);
     in_ISR = true;
 }
 
