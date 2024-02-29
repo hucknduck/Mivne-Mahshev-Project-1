@@ -50,7 +50,7 @@ int furthestsectorwritten; // so we know when to stop writing "00000000" in disk
 int furthestinsector;
 char regs[NUM_OF_REGS][MEM_WDT]; //hold regs value, same encoding as in PDF
 char IO[NUM_OF_IO_REGS][MEM_WDT]; //hold IO regs value, same encoding as in PDF
-int monitor[MONITOR_BUFFER_LEN];
+char monitor[MONITOR_BUFFER_LEN][2];
 bool irq;
 int nextirq2;
 bool havenextirq2;
@@ -82,10 +82,10 @@ char * sign_extend_immediate(int immediate){
     int err;
     bool ShouldExtend = (immediate >= 2048); //2^11 = 2048, if condition is true it means MSB is 1 
     if (ShouldExtend){ //we checked if MSB is 1
-        err = sprintf(out, "FFFFF%3X", immediate)
+        err = sprintf(out, "FFFFF%3X", immediate);
     }
     else {
-        err = sprintf(out, "00000%3X", immediate)
+        err = sprintf(out, "00000%3X", immediate);
     }
     if (err < 0){}//handle error?
     return out;
@@ -219,7 +219,7 @@ bool init_code(){
 		row++;
 	}//where can we check for errors?
     for (row; row < MAX_NUM_OF_LINES; row++){
-        asmcode[row] = NULL;
+        strcpy(asmcode[row], NULL);
     }
     return true;
 }
@@ -235,7 +235,7 @@ bool init_mem(){
 	}//where can we check for errors?
     furthestaddresswritten = row;
     for (row; row < MAX_NUM_OF_LINES; row++){
-        mem[row] = "00000000";
+        strcpy(mem[row], "00000000");
     }
     return true;
 }
@@ -262,15 +262,15 @@ bool init_disk(){//todo
 bool init_misc(){
     int i;
     for (i = 0; i < NUM_OF_REGS; i++){
-        regs[i] = "00000000";
+        strcpy(regs[i], "00000000");
     }
     
     for (i = 0; i < NUM_OF_IO_REGS ; i++){
-        IO[i] = "00000000";
+        strcpy(IO[i], "00000000");
     }
 
     for (i=0; i < MONITOR_BUFFER_LEN; i++){
-        monitor[i] = "00";
+        strcpy(monitor[i], "00");
     }
     get_next_irq2();
     PC = 0;
@@ -412,7 +412,7 @@ void handle_input(){
     if (regnum > 22 || regnum < 0) {return;}//out of bounds
     regs[rd] = IO[regnum];
     if (regnum == MONITORCMDREG) {
-        regs[rd] = "00000000";
+        strcpy(regs[rd], "00000000");
     }
     write2hwtrace("READ", regnum);
 }
@@ -588,7 +588,7 @@ void run_instruction(){
 
 //---------------------------------------------- PERIPHERALS --------------------------------------//
 void write2disk(){
-    char* temp[8];
+    char* temp[MEM_WDT];
     int sector;
     int MEMaddress;
     int i;
@@ -598,7 +598,7 @@ void write2disk(){
         disk[sector][i] = mem[MEMaddress];
         MEMaddress++;
     }
-    IO[14] = "00000000";
+    strcpy(IO[14], "00000000");
 }
 
 void read_from_disk(){
@@ -611,7 +611,7 @@ void read_from_disk(){
         mem[MEMaddress] = disk[sector][i];
         MEMaddress++;
     }
-    IO[14] = "00000000";
+    strcpy(IO[14], "00000000");
 }
 
 void update_disk_timer(){
@@ -622,15 +622,15 @@ void update_disk_timer(){
 
 void update_irq(){ // check the irq status and update. only turns them on, the ISR needs to turn them off.
     if (timer == 0) {// irq0
-        IO[3] = "00000001";
+        strcpy(IO[3], "00000001");
     }
     if (disk_timer == 1024 && IO[17] == "1") {// irq1
-        IO[4] = "00000001"; 
+        strcpy(IO[4], "00000001"); 
         disk_timer = 0;
-        IO[17] == "00000000";
+        strcpy(IO[17], "00000000");
     }
     if (havenextirq2 && cyclecount == nextirq2) {// irq2
-        IO[5] = "00000001";
+        strcpy(IO[5], "00000001");
         get_next_irq2(); 
     }
     irq = ((strcmp(IO[0],"00000001") == 0 && strcmp(IO[3], "00000001") == 0) || (strcmp(IO[1], "00000001") == 0 && strcmp(IO[4], "00000001") == 0) || (strcmp(IO[2], "00000001") == 0 && strcmp(IO[5], "00000001") == 0));
@@ -640,7 +640,7 @@ void update_timer(){
     if (IO[11] == "1"){//todo: change to strcmp
         if (timer == max_timer){
             timer = 0;
-            IO[12] = "00000000"
+            strcpy(IO[12], "00000000");
         }
         else{
             timer++;
