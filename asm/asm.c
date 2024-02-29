@@ -375,7 +375,7 @@ void translate_instruction(char* line, char* instruction) {
 	int wordnum = 0;
 	//char instruction[48] = {0};
 	char* pch = "";
-	char immediate[3] = {0};
+	char immediate[8] = "";
 	for (wordnum = 0; wordnum < NUM_OF_PARAMS; wordnum++){// can use for loop since non-label lines always have 6 params
 		if (wordnum == 0){
 			line = line+1; // avoid the tab
@@ -396,6 +396,7 @@ void translate_instruction(char* line, char* instruction) {
 			handle_immediate(pch, immediate);
 			// printf("%s ###\n",immediate);
 			int last_three_bytes = strlen(immediate) - 3;
+
 			strcat(instruction, &(immediate[last_three_bytes]));
 			// printf("%s ###\n",instruction);
 		}
