@@ -44,8 +44,10 @@ char* mem[MAX_NUM_OF_LINES] = { "00000000" }; //write dmemin here, and output th
 int furthestaddresswritten; //so we know when to stop writing "00000000" in dmemout
 char* disk[NUM_OF_SECTORS][SECTOR_SIZE];
 int furthestsectorwritten; // so we know when to stop writing "00000000" in diskout
+int furthestinsector;
 char* regs[NUM_OF_REGS]; //hold regs value, same encoding as in PDF
 char* IO[NUM_OF_IO_REGS]; //hold IO regs value, same encoding as in PDF
+int monitor[256*256];
 bool irq;
 int nextirq2;
 bool havenextirq2;
@@ -247,6 +249,7 @@ bool init_disk(){//todo
         }
 	}//where can we check for errors?
     furthestsectorwritten = sector;
+    furthestinsector = row;
     return true;
 }
 
@@ -303,7 +306,37 @@ void output2trace(){
 }
 
 void write2dmemout(){
-    
+    int row = 0;
+    for (row; row<furthestaddresswritten; row++){
+        fprintf(dmemout, "%s\n", dmemout[row]);
+    }
+}
+
+void write2regout(){
+    fprintf(regout, "%s %s %s %s %s %s %s %s %s %s %s %s %s\n", regs[3], regs[4], regs[5], regs[6], regs[7], regs[8], regs[9], regs[10], regs[11], regs[12], regs[13], regs[14], regs[15]);
+}
+
+void write2cycles(){
+    fprintf(cycles, "%d\n", cyclecount);
+}
+
+void write2diskout(){
+    int sector = 0;
+    int row = 0;
+    for (sector; sector < furthestsectorwritten; sector++){
+        for (row = 0; row < 128; row++){
+            fprintf(diskout, "%s\n", disk[sector][row]);
+        }
+    }
+    if (furthestsectorwritten != 0) {
+        for (row = 0; row < furthestinsector; row++){
+            fprintf(cycles, "%s\n", disk[sector][row]);
+        }
+    }
+}
+
+void write2monitor(){
+
 }
 
 void write_to_output(){
