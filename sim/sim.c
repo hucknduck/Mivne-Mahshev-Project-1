@@ -12,9 +12,11 @@
 #define MEM_WDT 8 //Bytes
 #define NUM_OF_REGS 16
 #define NUM_OF_IO_REGS 23
+#define MONITOR_BUFFER_LEN 256*256
 
 #define DISPLAY7SEGREG 10
 #define LEDSREG 9
+#define MONITORCMDREG 22
 
 #define Add 0
 #define Sub 1
@@ -47,7 +49,7 @@ int furthestsectorwritten; // so we know when to stop writing "00000000" in disk
 int furthestinsector;
 char* regs[NUM_OF_REGS]; //hold regs value, same encoding as in PDF
 char* IO[NUM_OF_IO_REGS]; //hold IO regs value, same encoding as in PDF
-int monitor[256*256];
+int monitor[MONITOR_BUFFER_LEN];
 bool irq;
 int nextirq2;
 bool havenextirq2;
@@ -263,6 +265,9 @@ bool init_misc(){
         IO[i] = "00000000";
     }
 
+    for (i=0; i < MONITOR_BUFFER_LEN; i++){
+        monitor[i] = "00";
+    }
     get_next_irq2();
     PC = 0;
     cyclecount = 0;
@@ -336,7 +341,10 @@ void write2diskout(){
 }
 
 void write2monitor(){
-
+    for (int i = 0; i < MONITOR_BUFFER_LEN; i++){
+        fprintf(monitortxt, "%s\n", monitor[i]);
+        fprintf(monitoryuv, "%s\n", monitor[i]);
+    }
 }
 
 void write_to_output(){
@@ -390,10 +398,18 @@ void prepare_instruction(){
     regs[2] = sign_extend_immediate(imm2);
 }
 
+void save_in_monitor(){
+    int monitoraddr = strtol(IO[20], NULL, 16);
+    monitor[monitoraddr] = {IO[21][6], IO[21][7]};//take the last 2 hexa digits in IO reg
+}
+
 void handle_input(){
     int regnum = strtol(regs[rt], NULL, 16) + strtol(regs[rs], NULL, 16);
     if (regnum > 22 || regnum < 0) {return;}//out of bounds
     regs[rd] = IO[regnum];
+    if (regnum == MONITORCMDREG) {
+        regs[rd] = "00000000";
+    }
     write2hwtrace("READ", regnum);
 }
 
@@ -411,6 +427,11 @@ void handle_output(){
             break;
         case LEDSREG:
             write2hwleds();
+            break;
+        case MONITORCMDREG:
+            if (strcmp(IO[regnum], "00000001") == 0){
+                save_in_monitor();
+            }
             break;
         default:
             break;
@@ -561,8 +582,7 @@ void run_instruction(){
     }
 }
 
- //---------------------------------------------- PERIPHERALS --------------------------------------//
-
+//---------------------------------------------- PERIPHERALS --------------------------------------//
 void write2disk(){
     long sector;
     long MEMaddress;
