@@ -59,6 +59,8 @@ bool running;
 FILE *imemin, *dmemin, *diskin, *irq2in; //input files
 FILE *dmemout, *regout, *trace, *hwregtrace, *cycles, *leds, *display7seg, *diskout, *monitortxt, *monitoryuv; //output files
 
+int opcode, rd, rs, rt, rm, imm1, imm2; //the 7 arguments per instruction
+
 // -------------------------------------------------- HELPERS ------------------------------------------//
 void get_next_irq2(){
     char buffer[MAX_LINE_LEN] = NULL;
@@ -283,53 +285,9 @@ bool init_values(){ //init values of regs, IO, and copy imemin and dmemin into a
     return true;
 }
 
-//-------------------------------------------------------- RUN -------------------------------------------------//
-
-int opcode, rd, rs, rt, rm, imm1, imm2; //the 7 arguments per instruction
-
-void decode_instruction(char* instruction){
-    //opcode: 2 digits, rd: 1 digit, rs: 1 digit, rt: 1 digit, rm: 1 digit, imm1: 3 digits, imm2: 3 digits
-    //000000000000
-    char instructionbytes[INST_WDT + 1];
-    strcpy(instructionbytes, instruction);
-    
-    char* start = instructionbytes + 9;
-    imm2 = strtol(start, NULL, 0);
-    instructionbytes[9] = NULL;
-    
-    start = instructionbytes + 6;
-    imm1 = strtol(start, NULL, 0);
-    instructionbytes[6] = NULL;
-    
-    start -= 1;
-    rm = strtol(start, NULL, 0);
-    instructionbytes[5] = NULL;
-    
-    start -= 1;
-    rt = strtol(start, NULL, 0);
-    instructionbytes[4] = NULL;
-    
-    start -= 1;
-    rs = strtol(start, NULL, 0);
-    instructionbytes[3] = NULL;
-    
-    start -= 1;
-    rd = strtol(start, NULL, 0);
-    instructionbytes[2] = NULL;
-    
-    opcode = strtol(instructionbytes, NULL, 0);
-
-    //not sure if this works, pretty disgusting code
-}
-
-void prepare_instruction(){
-    regs[1] = sign_extend_immediate(imm1);
-    regs[2] = sign_extend_immediate(imm2);
-}
-
 //------------------------------------------------OUTPUT-------------------------------------------------//
 
-void write2hwtrace(char* rw, int IOnum){
+void write2hwtrace(char* rw, int IOnum) {
     char* IOreg = get_IO_reg_name(IOnum);
     fprintf(trace, "%d %s %s %s\n", cyclecount, rw, IOreg, IO[IOnum]);
 }
@@ -342,18 +300,76 @@ void write2hwleds{
     fprintf(leds, "%d %s", cyclecount, IO[LEDSREG]);
 }
 
+void output2trace(){
+    char* strtowrite;
+    int err;
+    err = sprintf(strtowrite, "%03X %s", PC, asmcode[PC]);
+    if (err < 0){}//handle error?
+    for (int i = 0; i < NUM_OF_REGS; i++){
+        strcat(strtowrite, regs[i]);
+    }
+    strcat(strtowrite, "\n");
+    fprintf(trace, strtowrite);
+}
+
+void write_to_output(){
+    //write at end: *dmemout, *regout,   *cycles,   *diskout, *monitortxt, *monitoryuv;
+}
+
+//-------------------------------------------------------- CPU RUN -------------------------------------------------//
+
+void decode_instruction(char* instruction){
+    //opcode: 2 digits, rd: 1 digit, rs: 1 digit, rt: 1 digit, rm: 1 digit, imm1: 3 digits, imm2: 3 digits
+    //000000000000
+    char instructionbytes[INST_WDT + 1];
+    strcpy(instructionbytes, instruction);
+    
+    char* start = instructionbytes + 9;
+    imm2 = strtol(start, NULL, 16);
+    instructionbytes[9] = NULL;
+    
+    start = instructionbytes + 6;
+    imm1 = strtol(start, NULL, 16);
+    instructionbytes[6] = NULL;
+    
+    start -= 1;
+    rm = strtol(start, NULL, 16);
+    instructionbytes[5] = NULL;
+    
+    start -= 1;
+    rt = strtol(start, NULL, 16);
+    instructionbytes[4] = NULL;
+    
+    start -= 1;
+    rs = strtol(start, NULL, 16);
+    instructionbytes[3] = NULL;
+    
+    start -= 1;
+    rd = strtol(start, NULL, 16);
+    instructionbytes[2] = NULL;
+    
+    opcode = strtol(instructionbytes, NULL, 16);
+
+    //not sure if this works, pretty disgusting code
+}
+
+void prepare_instruction(){
+    regs[1] = sign_extend_immediate(imm1);
+    regs[2] = sign_extend_immediate(imm2);
+}
+
 void handle_input(){
     int regnum = strtol(regs[rt], NULL, 16) + strtol(regs[rs], NULL, 16);
-    if (regnum > 22 || regnum < 0){return;}//out of bounds
+    if (regnum > 22 || regnum < 0) {return;}//out of bounds
     regs[rd] = IO[regnum];
     write2hwtrace("READ", regnum);
 }
 
 void handle_output(){
-    int regnum = strtol(regs[rt], NULL, 16) + strtol(regs[rs], NULL, 16);
+    int regnum = (strtol(regs[rt], NULL, 16) + strtol(regs[rs], NULL, 16));
     if (regnum > 22 || regnum < 0){return;}//out of bounds
     bool cantwrite = (regnum == 3 || regnum == 4 || regnum == 5 || regnum == 17 || regnum == 18 || regnum == 19);//irq or rsvd or diskstatus
-    if (!cantwrite){ return; }
+    if (!cantwrite) { return; }
     IO[regnum] = regs[rd];
     //conditionally write to led.txt or 7seg.txt
     write2hwtrace("WRITE", regnum);
@@ -369,90 +385,17 @@ void handle_output(){
     }
 }
 
-void write2disk(){
-    long sector;
-    long MEMaddress;
-    int i;
-    sector = strtol(IO[15], NULL, 16); // sector that we write to in decimal
-    MEMaddress = strtol(IO[16], NULL, 16); // address of the buffer in the main memory that we read from in decimal
-    for (i = 0; i < 128; i++){
-        disk[sector][i] = mem[MEMaddress];
-        MEMaddress++;
-    }
-    IO[14] = "00";
-}
-
-void read_from_disk(){
-    long sector;
-    long MEMaddress;
-    int i;
-    sector = strtol(IO[15], NULL, 16); // sector that we read from in decimal
-    MEMaddress = strtol(IO[16], NULL, 16); // address of the buffer in the main memory that we write to in decimal
-    for (i = 0; i < 128; i++)
-    {
-        mem[MEMaddress] = disk[sector][i];
-        MEMaddress++;
-    }
-    IO[14] = "00";
-}
-
-void update_disk_timer(){
-    if (IO[14] = "00" && IO[17] == "1") // if we executed the read/write command we wait 1024 cycles while the disk is busy
-    {
-        disk_timer++;
-    }
-    
-}
-
-void update_irq(){ // check the irq status and update. only turns them on, the ISR needs to turn them off.
-    if (timer == 0) // irq0
-    {
-        IO[3] = "1";
-    }
-    if (disk_timer == 1024 && IO[17] == "1") // irq1
-    {
-        IO[4] = "1"; 
-        disk_timer = 0;
-        IO[17] == "0";
-    }
-    if (cyclecount == nextirq2) // irq2
-    {
-        IO[5] = "1";
-        get_next_irq2(); 
-    }
-    irq = (IO[0] == "1" && IO[3] == "1") || (IO[1] == "1" && IO[4] == "1") || (IO[2] == "1" && IO[5] == "1");
-
-    return;
-}
-
-void update_timer(){ 
-    int tmp;
-    if (IO[11] == "1"){//todo: change to strcmp
-        if (timer == max_timer)
-        {
-            timer = 0;
-            IO[12] = "00000000"
-        }
-        else{
-            timer++;
-            sprintf(IO[12],"%x", timer); // update timecurrent
-        }
-        return;
-    }
-    else{
-        return;
-    }
-}
-
-
 void run_instruction(){
     int val;
     bool branch;
     bool rdiswritable = !(rd == 0 || rd == 1 || rd == 2);//false when trying to write to $zero or $imm1,2
     int err;
+    int rsval = strtol(regs[rs], NULL, 16);
+    int rtval = strtol(regs[rt], NULL, 16);
+    int rmval = strtol(regs[rm], NULL, 16);
     switch (opcode){
         case Add:
-            val = strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0) + strtol(regs[rm], NULL, 0);
+            val = rsval + rtval + rmval;
             if (rdiswritable) {
                 err = sprintf(&regs[rd], "%08X", val);
                 if (err < 0){}//handle error?
@@ -460,7 +403,7 @@ void run_instruction(){
             PC++;
             break;
         case Sub:
-            val = strtol(regs[rs], NULL, 0) - strtol(regs[rt], NULL, 0) - strtol(regs[rm], NULL, 0);
+            val = rsval - rtval - rmval;
             if (rdiswritable) {
                 err = sprintf(&regs[rd], "%08X", val);
                 if (err < 0){}//handle error?
@@ -468,7 +411,7 @@ void run_instruction(){
             PC++;
             break;
         case Mac:
-            val = strtol(regs[rs], NULL, 0) * strtol(regs[rt], NULL, 0) + strtol(regs[rm], NULL, 0);
+            val = rsval * rtval + rmval;
             if (rdiswritable) {
                 err = sprintf(&regs[rd], "%08X", val);
                 if (err < 0){}//handle error?
@@ -476,7 +419,7 @@ void run_instruction(){
             PC++;
             break;
         case And:
-            val = strtol(regs[rs], NULL, 0) & strtol(regs[rt], NULL, 0) & strtol(regs[rm], NULL, 0);
+            val = rsval & rtval & rmval;
             if (rdiswritable) {    
                 err = sprintf(&regs[rd], "%08X", val);
                 if (err < 0){}//handle error?
@@ -484,7 +427,7 @@ void run_instruction(){
             PC++;
             break;
         case Or:
-            val = strtol(regs[rs], NULL, 0) | strtol(regs[rt], NULL, 0) | strtol(regs[rm], NULL, 0);
+            val = rsval | rtval | rmval;
             if (rdiswritable) {
                 err = sprintf(&regs[rd], "%08X", val);
                 if (err < 0){}//handle error?
@@ -492,7 +435,7 @@ void run_instruction(){
             PC++;
             break;
         case Xor:
-            val = strtol(regs[rs], NULL, 0) ^ strtol(regs[rt], NULL, 0) ^ strtol(regs[rm], NULL, 0);
+            val = rsval ^ rtval ^ rmval;
             if (rdiswritable) {
                 err = sprintf(&regs[rd], "%08X", val);
                 if (err < 0){}//handle error?
@@ -500,7 +443,7 @@ void run_instruction(){
             PC++;
             break;
         case Sll:
-            val = strtol(regs[rs], NULL, 0) << strtol(regs[rt], NULL, 0);
+            val = rsval << rtval;
             if (rdiswritable) {
                 err = sprintf(&regs[rd], "%08X", val);
                 if (err < 0){}//handle error?
@@ -520,62 +463,62 @@ void run_instruction(){
             PC++;
             break;
         case Beq:
-            branch = (strtol(regs[rs], NULL, 0) == strtol(regs[rt], NULL, 0));
-            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            branch = (rsval == rtval);
+            PC = branch? rmval : PC+1;
             break;
         case Bne:
-            branch = (strtol(regs[rs], NULL, 0) != strtol(regs[rt], NULL, 0));
-            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            branch = (rsval != rtval);
+            PC = branch? rmval : PC+1;
             break;
         case Blt:
-            branch = (strtol(regs[rs], NULL, 0) < strtol(regs[rt], NULL, 0));
-            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            branch = (rsval < rtval);
+            PC = branch? rmval : PC+1;
             break;
         case Bgt:
-            branch = (strtol(regs[rs], NULL, 0) > strtol(regs[rt], NULL, 0));
-            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            branch = (rsval > rtval);
+            PC = branch? rmval : PC+1;
             break;
         case Ble:
-            branch = (strtol(regs[rs], NULL, 0) <= strtol(regs[rt], NULL, 0));
-            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            branch = (rsval <= rtval);
+            PC = branch? rmval : PC+1;
             break;
         case Bge:
-            branch = (strtol(regs[rs], NULL, 0) >= strtol(regs[rt], NULL, 0));
-            PC = branch? strtol(regs[rm], NULL, 0) : PC+1;
+            branch = (rsval >= rtval);
+            PC = branch? rmval : PC+1;
             break;
         case Jal:
             if (rdiswritable) {
                 err = sprintf(&regs[rd], "%08X", PC+1);
                 if (err < 0){}//handle error?   
             }
-            PC = strtol(regs[rm], NULL, 0);
+            PC = rmval;
             break;
         case Lw:
             if (rdiswritable) {
-                regs[rd] = mem[(strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0)) % MAX_NUM_OF_LINES];
-                val = strtol(regs[rd], NULL, 0) + strtol(regs[rm], NULL, 0);
+                regs[rd] = mem[(rsval + rtval) % MAX_NUM_OF_LINES];
+                val = strtol(regs[rd], NULL, 16) + rmval;
                 err = sprintf(&regs[rd], "%08X", val);
                 if (err < 0){}//handle error?
             }
             PC++;
             break;
         case Sw:
-            val = strtol(regs[rd], NULL, 0) + strtol(regs[rm], NULL, 0);
-            err = sprintf(&mem[(strtol(regs[rs], NULL, 0) + strtol(regs[rt], NULL, 0)) % MAX_NUM_OF_LINES], "%08X", val);
+            val = strtol(regs[rd], NULL, 16) + rmval;
+            err = sprintf(&mem[(rsval + rtval) % MAX_NUM_OF_LINES], "%08X", val);
             if (err < 0){}//handle error?
             PC++;
             break;
         case Reti:
-            PC = strtol(IO[7], NULL, 0);
+            PC = strtol(IO[7], NULL, 16);
             break;
         case In:
             if (rdiswritable) {
-                handle_input();// todo
+                handle_input();
             }
             PC++;
             break;
         case Out:
-            handle_output();// todo
+            handle_output();
             PC++;
             break;
         case Halt:
@@ -586,31 +529,86 @@ void run_instruction(){
     }
 }
 
-void output2trace(){
-    char* strtowrite;
-    int err;
-    err = sprintf(strtowrite, "%03X %s", PC, asmcode[PC]);
-    if (err < 0){}//handle error?
-    for (int i = 0; i < NUM_OF_REGS; i++){
-        strcat(strtowrite, regs[i]);
+ //---------------------------------------------- PERIPHERALS --------------------------------------//
+
+
+void write2disk(){
+    long sector;
+    long MEMaddress;
+    int i;
+    sector = strtol(IO[15], NULL, 16); // sector that we write to in decimal
+    MEMaddress = strtol(IO[16], NULL, 16); // address of the buffer in the main memory that we read from in decimal
+    for (i = 0; i < 128; i++) {
+        disk[sector][i] = mem[MEMaddress];
+        MEMaddress++;
     }
-    strcat(strtowrite, "\n");
-    fprintf(trace, strtowrite);
+    IO[14] = "00";
 }
 
-void write_to_output(){
-    //write at end: *dmemout, *regout,   *cycles,   *diskout, *monitortxt, *monitoryuv;
+void read_from_disk(){
+    long sector;
+    long MEMaddress;
+    int i;
+    sector = strtol(IO[15], NULL, 16); // sector that we read from in decimal
+    MEMaddress = strtol(IO[16], NULL, 16); // address of the buffer in the main memory that we write to in decimal
+    for (i = 0; i < 128; i++){
+        mem[MEMaddress] = disk[sector][i];
+        MEMaddress++;
+    }
+    IO[14] = "00";
 }
+
+void update_disk_timer(){
+    if (IO[14] = "00" && IO[17] == "1") { // if we executed the read/write command we wait 1024 cycles while the disk is busy
+        disk_timer++;
+    }
+}
+
+void update_irq(){ // check the irq status and update. only turns them on, the ISR needs to turn them off.
+    if (timer == 0) {// irq0
+        IO[3] = "1";
+    }
+    if (disk_timer == 1024 && IO[17] == "1") {// irq1
+        IO[4] = "1"; 
+        disk_timer = 0;
+        IO[17] == "0";
+    }
+    if (havenextirq2 && cyclecount == nextirq2) {// irq2
+        IO[5] = "1";
+        get_next_irq2(); 
+    }
+    irq = ((IO[0] == "1" && IO[3] == "1") || (IO[1] == "1" && IO[4] == "1") || (IO[2] == "1" && IO[5] == "1"));
+}
+
+void update_timer(){ 
+    if (IO[11] == "1"){//todo: change to strcmp
+        if (timer == max_timer){
+            timer = 0;
+            IO[12] = "00000000"
+        }
+        else{
+            timer++;
+            sprintf(IO[12],"%x", timer); // update timecurrent
+        }
+    }
+}
+
+void handle_parallel_systems(){
+    cyclecount++;
+    update_timer();
+    update_disk_timer();
+    update_irq();
+}
+
+//-------------------------------- MAIN LOOP -----------------------------------//
 
 bool run_program(){ //main func that runs while we didn't get HALT instruction
     while(running){
-        //split into 4 parts:
-        //write to output files all that is relevant
-        //get all args needed from asmcode[PC]: translate from opcode to args
-        //run instruction: switch case depending on opcode !!!PC IS UPDATED HERE!!!
-        //run all parallel auxilary systems: timer, disk, INTERRUPTS!!! - PC maybe updated here if interrupted
-        
         //pre-instruction
+        //todo: add handle irq. maybe updates PC
+        
+        
+        
         if (PC > MAX_NUM_OF_LINES){ break; } // or error?
         char* codedinst;
         strcpy(codedinst, asmcode[PC]);
@@ -627,31 +625,17 @@ bool run_program(){ //main func that runs while we didn't get HALT instruction
 
         //post instruction
         handle_parallel_systems();
-        cyclecount++;
-        update_timer();
-        update_disk_timer();
-        update_irq();
-
     }
-
 }
+
+//------------------------------------FINALIZE-------------------------------------------//
 
 bool finalize(){ //release everything for program end and print last things for output files if needed
-
+    write_to_output();
+    close_files();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
+//----------------------------------------- MAIN ----------------------------------------//
 
 int main(int argc, char* argv[]) {
     if (argc != 15) {
