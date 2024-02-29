@@ -508,15 +508,19 @@ void run_instruction(){
             }
             PC++;
             break;
-        case Sra:
+        case Sra: //arithmetic shift with sign extension
+            val =  rsval >> rtval;
             if (rdiswritable) {
-                //todo
+                err = sprintf(&regs[rd], "%08X", val);
+                if (err < 0){}//handle error?
             }
             PC++;
             break;
-        case Srl:
+        case Srl: // logic shift vacant bits filled up with zeros
+            val =  ((unsigned int)rsval) >> rtval;
             if (rdiswritable) {
-                //todo
+                err = sprintf(&regs[rd], "%08X", val_u);
+                if (err < 0){}//handle error?
             }
             PC++;
             break;
