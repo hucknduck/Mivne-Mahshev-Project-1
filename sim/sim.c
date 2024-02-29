@@ -59,8 +59,90 @@ bool running;
 FILE *imemin, *dmemin, *diskin, *irq2in; //input files
 FILE *dmemout, *regout, *trace, *hwregtrace, *cycles, *leds, *display7seg, *diskout, *monitortxt, *monitoryuv; //output files
 
+// -------------------------------------------------- HELPERS ------------------------------------------//
+void get_next_irq2(){
+    char buffer[MAX_LINE_LEN] = NULL;
+    char* err = fgets(buffer, sizeof(buffer), irq2in);
+    if (err == NULL){
+        havenextirq2 = false;
+        return;
+    }
+    havenextirq2 = true;
+    nextirq2 = strtol(buffer, NULL, 0);
+}
+
+char * sign_extend_immediate(int immediate){
+    char * out;
+    int err;
+    err = sprintf(out, "%3X", immediate);//immediates are 12 bits = 3 hex digits
+    if (err < 0){}//handle error?
+    bool ShouldExtend = (out[0] == '9' || out[0] == '8');
+    ShouldExtend |= (out[0] >= 'A' && out[0] <= 'F');
+    ShouldExtend |= (out[0] >= 'a' && out[0] <= 'f');
+    if (ShouldExtend){ //we checked if MSB is 1
+        out = strcat("FFFFF", out);
+    }
+    else {
+        out = strcat("00000", out);
+    }
+    return out;
+}
+
+char* get_IO_reg_name(int regnum){
+    switch (regnum){
+        case 0:
+            return "irq0enable";
+        case 1:
+            return "irq1enable";
+        case 2:
+            return "irq2enable";
+        case 3:
+            return "irq0status";
+        case 4:
+            return "irq1status";
+        case 5:
+            return "irq2status";
+        case 6:
+            return "irqhandler";
+        case 7:
+            return "irqreturn";
+        case 8:
+            return "clks";
+        case 9:
+            return "leds";
+        case 10:
+            return "display7seg";
+        case 11:
+            return "timerenable";
+        case 12:
+            return "timercurrent";
+        case 13:
+            return "timermax";
+        case 14:
+            return "diskcmd";
+        case 15:
+            return "disksector";
+        case 16:
+            return "diskbuffer";
+        case 17:
+            return "diskstatus";
+        case 18:
+            return "reserved";
+        case 19:
+            return "reserved";
+        case 20:
+            return "monitoraddr";
+        case 21:
+            return "monitordata";
+        case 22:
+            return "monitorcmd";
+        default:
+            return NULL; //error
+    }
+}
+//---------------------------------------------------- INIT -----------------------------------------//
+
 bool init_files(char* argv[]){ //open all FILE structs. return false if failed
-    
     //input files
     imemin = fopen(argv[1], "r");
 	if (imemin == NULL) {
@@ -168,17 +250,6 @@ bool init_disk(){//todo
     return true;
 }
 
-void get_next_irq2(){
-    char buffer[MAX_LINE_LEN] = NULL;
-    char* err = fgets(buffer, sizeof(buffer), irq2in);
-    if (err == NULL){
-        havenextirq2 = false;
-        return;
-    }
-    havenextirq2 = true;
-    nextirq2 = strtol(buffer, NULL, 0);
-}
-
 bool init_misc(){
     int i;
     for (i = 0; i < NUM_OF_REGS; i++){
@@ -211,6 +282,8 @@ bool init_values(){ //init values of regs, IO, and copy imemin and dmemin into a
     }
     return true;
 }
+
+//-------------------------------------------------------- RUN -------------------------------------------------//
 
 int opcode, rd, rs, rt, rm, imm1, imm2; //the 7 arguments per instruction
 
@@ -249,34 +322,24 @@ void decode_instruction(char* instruction){
     //not sure if this works, pretty disgusting code
 }
 
-char * sign_extend_immediate(int immediate){
-    char * out;
-    int err;
-    err = sprintf(out, "%3X", immediate);//immediates are 12 bits = 3 hex digits
-    if (err < 0){}//handle error?
-    bool ShouldExtend = (out[0] == '9' || out[0] == '8');
-    ShouldExtend |= (out[0] >= 'A' && out[0] <= 'F');
-    ShouldExtend |= (out[0] >= 'a' && out[0] <= 'f');
-    if (ShouldExtend){ //we checked if MSB is 1
-        out = strcat("FFFFF", out);
-    }
-    else {
-        out = strcat("00000", out);
-    }
-    return out;
-}
-
 void prepare_instruction(){
     regs[1] = sign_extend_immediate(imm1);
     regs[2] = sign_extend_immediate(imm2);
 }
 
+//------------------------------------------------OUTPUT-------------------------------------------------//
+
 void write2hwtrace(char* rw, int IOnum){
-    char* strtowrite;
-    char* IOreg = get_IO_reg_name();
-    int err = sprintf(strtowrite, "%d %s %s %s\n", cyclecount, rw, IOreg, IO[IOnum]);
-    if (err < 0){}//handle error?
-    fprintf(trace, strtowrite);
+    char* IOreg = get_IO_reg_name(IOnum);
+    fprintf(trace, "%d %s %s %s\n", cyclecount, rw, IOreg, IO[IOnum]);
+}
+
+void write2hw7seg(){
+    fprintf(display7seg, "%d %s", cyclecount, IO[DISPLAY7SEGREG]);
+}
+
+void write2hwleds{
+    fprintf(leds, "%d %s", cyclecount, IO[LEDSREG]);
 }
 
 void handle_input(){
@@ -536,7 +599,6 @@ void output2trace(){
 }
 
 void write_to_output(){
-    //conditional write: *hwregtrace, *leds, *display7seg,
     //write at end: *dmemout, *regout,   *cycles,   *diskout, *monitortxt, *monitoryuv;
 }
 
