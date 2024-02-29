@@ -59,6 +59,21 @@ struct labels {
 
 struct labels* label;
 
+int* dmem;
+
+bool is_line_dot_word(char* line){
+	char* word_ptr = strstr(line, ".word");
+	char* comment_ptr;
+	if (word_ptr == NULL) {
+		return false; // no .word
+	}
+	comment_ptr = strstr(line, "#");
+	if (comment_ptr == NULL) {
+		return true; // yes .word and no comment
+	}
+	return comment_ptr - word_ptr > 0; // the comment appears after the ".word" --> true
+}
+
 bool is_line_a_label(char* line) { // examples: L4:, Olnmfda:, L1:
     char* end;
 	if (line == NULL || *line == '\0') {
@@ -166,8 +181,29 @@ struct labels* get_label(char* label_name){
 	return NULL;
 }
 
+void check_dot_word(char* line){
+	char* helper = (char *)malloc(MAX_LINE_LEN * sizeof(char));
+	char* to_free = helper;
+	if (helper == NULL) { perror("MALLOC ERROR"); return;}
+	helper = strtok(line, "\t. ");
+	
+	int index = 0;
+	int val = 0;
+	if (strcmp(helper,"word") != 0){ //helper isn't word;
+		return;
+	}
+	helper = strtok(NULL, " ");
+	index = strtol(helper, NULL , 10);
+	
+	helper = strtok(NULL, " ");
+	val = strtol(helper, NULL, 10);
+	
+	dmem[index] = val;
+	free(to_free);
+}
+
 void first_pass() {
-	// This function remmebers the lables and their addresses
+	// This function remmebers the lables and their addresses, also remmembers the .words
 	char buffer[MAX_LINE_LEN];
 	int row = 0;
 
@@ -183,6 +219,7 @@ void first_pass() {
 		else {
             //printf("row: %d\n",row);
 			row++; //instruction
+			check_dot_word(buffer);
 			//todo : maybe check if the line is actually an instruction
 		}
 	}
@@ -378,7 +415,7 @@ void second_pass() {
 	int row = 0;
 	//for every line of code inputed:
 	while (fgets(buffer, sizeof(buffer), program) != NULL) {
-		if (!is_line_a_label(buffer)) {
+		if (!is_line_a_label(buffer) && !is_line_dot_word(buffer)) {
 			//translate instruction to hex code:
 			//printf("translating row %d\n",row);
 			char* instruction = (char*) calloc(sizeof(char),48); // todo add check
@@ -388,6 +425,31 @@ void second_pass() {
 			free(instruction);
 			row++;
 		}
+	}
+}
+
+int find_biggest_index(){
+	for (int i = 4095; i >= 0; i--){
+		if (dmem[i] != 0)
+			{return i;}
+	}
+	return 0;
+}
+
+void create_dmem(){
+	char buff[9];
+	int biggest_num = find_biggest_index();
+	printf("%s","dmem\n");
+	for (int i = 0; i <= biggest_num; i++){
+		snprintf(buff, 1+sizeof(buff),"%8X", dmem[i]); //THIS FUNC CONTAINS IMPLICIT MALLOC, MEM IS FREED IN translate_instruction()
+		for (int j = 0; j < 8; j++){
+			if (buff[j] == ' ')
+				buff[j] = '0';
+		}
+		printf("%s\n",buff);
+		fseek ( dmemin , 0, SEEK_CUR);
+		fputs( buff,  dmemin); 
+		fputs( "\n", dmemin );
 	}
 }
 
@@ -406,23 +468,28 @@ int main(int argc, char* argv[]) {
 	/*command-line parsing */
 	/*asm.exe program.asm imemin.txt dmemin.txt*/
 	if (argc != 4) {
+		printf("Wrong number of args");
 		return EXIT_FAILURE;
 	}
 	program = fopen(argv[1], "r");
 	if (program == NULL) {
+		printf("Couldn't open the .asm");
 		return EXIT_FAILURE;
 	}
 	/*Creating the output files*/
 	imemin = fopen(argv[2], "w"); // imemin.txt, if exists it erases it
 	if (imemin == NULL) {
+		printf("Couldn't open imemin");
 		return EXIT_FAILURE;
 	}
 	dmemin = fopen(argv[3], "w"); // dmemin.txt, if exists it erases it
 	if (dmemin == NULL) {
+		printf("Couldn't open dmemin");
 		return EXIT_FAILURE;
 	}
 	/*end of command-line parsing */
 
+	dmem = (int *)calloc(4096,sizeof(int)); // remember .word for dmemin
 	/* first pass- remmbering lables */
 	first_pass();
 	//printf("First pass is done.\n");
@@ -433,6 +500,7 @@ int main(int argc, char* argv[]) {
 
 	second_pass();
 	
+	create_dmem();
 	//todo free the linked list
 	fclose(program);
 	fclose(imemin);

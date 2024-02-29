@@ -14,6 +14,7 @@
 #define NUM_OF_IO_REGS 23
 #define MONITOR_BUFFER_LEN 256*256
 
+
 #define DISPLAY7SEGREG 10
 #define LEDSREG 9
 #define MONITORCMDREG 22
@@ -41,14 +42,14 @@
 #define Out 20
 #define Halt 21
 
-char* asmcode[MAX_NUM_OF_LINES] = { NULL }; //PC will read from this array to get current instruction
-char* mem[MAX_NUM_OF_LINES] = { "00000000" }; //write dmemin here, and output this to dmemout
+char asmcode[MAX_NUM_OF_LINES][INST_WDT]; //PC will read from this array to get current instruction
+char mem[MAX_NUM_OF_LINES][MEM_WDT]; //write dmemin here, and output this to dmemout
 int furthestaddresswritten; //so we know when to stop writing "00000000" in dmemout
-char* disk[NUM_OF_SECTORS][SECTOR_SIZE];
+char disk[NUM_OF_SECTORS][SECTOR_SIZE][MEM_WDT];
 int furthestsectorwritten; // so we know when to stop writing "00000000" in diskout
 int furthestinsector;
-char* regs[NUM_OF_REGS]; //hold regs value, same encoding as in PDF
-char* IO[NUM_OF_IO_REGS]; //hold IO regs value, same encoding as in PDF
+char regs[NUM_OF_REGS][MEM_WDT]; //hold regs value, same encoding as in PDF
+char IO[NUM_OF_IO_REGS][MEM_WDT]; //hold IO regs value, same encoding as in PDF
 int monitor[MONITOR_BUFFER_LEN];
 bool irq;
 bool in_ISR;
@@ -78,7 +79,7 @@ void get_next_irq2(){
 }
 
 char * sign_extend_immediate(int immediate){
-    char out[8];
+    char out[MEM_WDT];
     int err;
     bool ShouldExtend = (immediate >= 2048); //2^11 = 2048, if condition is true it means MSB is 1 
     if (ShouldExtend){ //we checked if MSB is 1
@@ -218,6 +219,9 @@ bool init_code(){
 		strcpy(asmcode[row], buffer);
 		row++;
 	}//where can we check for errors?
+    for (row; row < MAX_NUM_OF_LINES; row++){
+        asmcode[row] = NULL;
+    }
     return true;
 }
 
@@ -231,6 +235,9 @@ bool init_mem(){
 		row++;
 	}//where can we check for errors?
     furthestaddresswritten = row;
+    for (row; row < MAX_NUM_OF_LINES; row++){
+        mem[row] = "00000000";
+    }
     return true;
 }
 
