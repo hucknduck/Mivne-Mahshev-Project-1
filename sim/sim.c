@@ -302,6 +302,10 @@ void output2trace(){
     fprintf(trace, "%03X %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n", PC, asmcode[PC], regs[0], regs[1], regs[2], regs[3], regs[4], regs[5], regs[6], regs[7], regs[8], regs[9], regs[10], regs[11], regs[12], regs[13], regs[14], regs[15]);
 }
 
+void write2dmemout(){
+    
+}
+
 void write_to_output(){
     //write at end: *dmemout, *regout,   *cycles,   *diskout, *monitortxt, *monitoryuv;
     write2dmemout();
