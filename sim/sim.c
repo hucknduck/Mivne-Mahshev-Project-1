@@ -77,19 +77,16 @@ void get_next_irq2(){
 }
 
 char * sign_extend_immediate(int immediate){
-    char * out;
+    char out[8];
     int err;
-    err = sprintf(out, "%3X", immediate);//immediates are 12 bits = 3 hex digits
-    if (err < 0){}//handle error?
-    bool ShouldExtend = (out[0] == '9' || out[0] == '8');
-    ShouldExtend |= (out[0] >= 'A' && out[0] <= 'F');
-    ShouldExtend |= (out[0] >= 'a' && out[0] <= 'f');
+    bool ShouldExtend = (immediate >= 2048); //2^11 = 2048, if condition is true it means MSB is 1 
     if (ShouldExtend){ //we checked if MSB is 1
-        out = strcat("FFFFF", out);
+        err = sprintf(out, "FFFFF%3X", immediate)
     }
     else {
-        out = strcat("00000", out);
+        err = sprintf(out, "00000%3X", immediate)
     }
+    if (err < 0){}//handle error?
     return out;
 }
 
