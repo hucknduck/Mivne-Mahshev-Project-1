@@ -51,6 +51,7 @@ char* regs[NUM_OF_REGS]; //hold regs value, same encoding as in PDF
 char* IO[NUM_OF_IO_REGS]; //hold IO regs value, same encoding as in PDF
 int monitor[MONITOR_BUFFER_LEN];
 bool irq;
+bool in_ISR;
 int nextirq2;
 bool havenextirq2;
 int PC;
@@ -581,12 +582,12 @@ void run_instruction(){
 
 //---------------------------------------------- PERIPHERALS --------------------------------------//
 void write2disk(){
-    char* temp[8];
+    char* temp[9];
     int sector;
     int MEMaddress;
     int i;
-    sector = atoi(sprintf(temp,"%d" , strtol(IO[15], NULL, 0))); // sector that we write to in decimal
-    MEMaddress = atoi(sprintf(temp, "%d", strtol(IO[16], NULL, 0))); // address of the buffer in the main memory that we read from in decimal
+    sector = atoi(sprintf(temp,"%d" , strtol(IO[15], NULL, 16))); // sector that we write to in decimal
+    MEMaddress = atoi(sprintf(temp, "%d", strtol(IO[16], NULL, 16))); // address of the buffer in the main memory that we read from in decimal
     for (i = 0; i < 128; i++) {
         disk[sector][i] = mem[MEMaddress];
         MEMaddress++;
@@ -595,11 +596,12 @@ void write2disk(){
 }
 
 void read_from_disk(){
-    long sector;
-    long MEMaddress;
+    char* temp[9];
+    int sector;
+    int MEMaddress;
     int i;
-    sector = atoi(sprintf(temp,"%d" , strtol(IO[15], NULL, 0))); // sector that we read from in decimal
-    MEMaddress = atoi(sprintf(temp, "%d", strtol(IO[16], NULL, 0))); // address of the buffer in the main memory that we write to in decimal
+    sector = atoi(sprintf(temp,"%d" , strtol(IO[15], NULL, 16))); // sector that we read from in decimal
+    MEMaddress = atoi(sprintf(temp, "%d", strtol(IO[16], NULL, 16))); // address of the buffer in the main memory that we write to in decimal
     for (i = 0; i < 128; i++){
         mem[MEMaddress] = disk[sector][i];
         MEMaddress++;
@@ -617,7 +619,7 @@ void update_irq(){ // check the irq status and update. only turns them on, the I
     if (timer == 0) {// irq0
         IO[3] = "00000001";
     }
-    if (disk_timer == 1024 && IO[17] == "1") {// irq1
+    if (disk_timer == 1024 && strcmp(IO[17], "00000001") == 0) {// irq1
         IO[4] = "00000001"; 
         disk_timer = 0;
         IO[17] == "00000000";
@@ -628,16 +630,22 @@ void update_irq(){ // check the irq status and update. only turns them on, the I
     }
     irq = ((strcmp(IO[0],"00000001") == 0 && strcmp(IO[3], "00000001") == 0) || (strcmp(IO[1], "00000001") == 0 && strcmp(IO[4], "00000001") == 0) || (strcmp(IO[2], "00000001") == 0 && strcmp(IO[5], "00000001") == 0));
 }
+void handle_irq(){ // go to ISR and handle 
+    char* temp[9];
+    sprintf(IO[7], "%X", PC);
+    PC = atoi(sprintf(temp,"%d" , strtol(IO[6], NULL, 16)));
+    in_ISR = true;
+}
 
 void update_timer(){ 
-    if (IO[11] == "1"){//todo: change to strcmp
+    if (strcmp(IO[11], "00000001") == 0){//todo: change to strcmp
         if (timer == max_timer){
             timer = 0;
             IO[12] = "00000000"
         }
         else{
             timer++;
-            sprintf(IO[12],"%x", timer); // update timecurrent
+            sprintf(IO[12],"0x%X", timer); // update timecurrent
         }
     }
 }
@@ -660,6 +668,11 @@ bool run_program(){ //main func that runs while we didn't get HALT instruction
         
         if (PC > MAX_NUM_OF_LINES){ break; } // or error?
         char* codedinst;
+        char* buffer[9];
+        
+        if (irq && !in_ISR){handle_irq();}
+        if (PC == atoi(sprintf(temp,"%d" , strtol(IO[15], NULL, 16)))){in_ISR = false;}
+        
         strcpy(codedinst, asmcode[PC]);
         if (codedinst == NULL){ break; } // or error?
         decode_instruction(codedinst);
