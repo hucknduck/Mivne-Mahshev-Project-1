@@ -51,6 +51,7 @@ int furthestinsector;
 char* regs[NUM_OF_REGS]; //hold regs value, same encoding as in PDF
 char* IO[NUM_OF_IO_REGS]; //hold IO regs value, same encoding as in PDF
 char* monitor[MONITOR_BUFFER_LEN];
+int furthestpixel;
 bool irq;
 bool in_ISR;
 int nextirq2;
@@ -160,7 +161,7 @@ void sign_extend_immediate(int immediate, char* immstr){
         err = sprintf(immstr, "fffff%3x", immediate);
     }
     else {
-        err = sprintf(immstr, "00000%03X", immediate);
+        err = sprintf(immstr, "00000%03x", immediate);
     }
     if (err < 0){}//handle error?
 }
@@ -385,6 +386,7 @@ bool init_misc(){
     cyclecount = 0;
     irq = false;
     in_ISR = false;
+    furthestpixel = 0;
     running = true;
     return true;
 }
@@ -437,8 +439,11 @@ void write2dmemout(){
 }
 
 void write2regout(){
-    fprintf(regout, "%s %s %s %s %s %s %s %s %s %s %s %s %s\n", regs[3], regs[4], regs[5], regs[6], regs[7], regs[8], regs[9], regs[10], regs[11], regs[12], regs[13], regs[14], regs[15]);
-    fflush(regout);
+    int regnum = 3;
+    for (regnum; regnum<NUM_OF_REGS; regnum++){
+        fprintf(regout, "%s\n", regs[regnum]);
+        fflush(regout);
+    }
 }
 
 void write2cycles(){
@@ -470,7 +475,7 @@ void write2diskout(){
 }
 
 void write2monitor(){
-    for (int i = 0; i < MONITOR_BUFFER_LEN; i++){
+    for (int i = 0; i < furthestpixel; i++){
         fprintf(monitortxt, "%s\n", monitor[i]);
         fflush(monitortxt);
         fprintf(monitoryuv, "%s\n", monitor[i]);
@@ -557,6 +562,9 @@ void prepare_instruction(){
 void save_in_monitor(){
     int monitoraddr = get_bin_value(IO[20]);
     // printf("WRITING TO MONITOR PXL %d\n", monitoraddr);
+    if (monitoraddr + 1 > furthestpixel){
+        furthestpixel = monitoraddr + 1;
+    }
     monitor[monitoraddr][0] = IO[21][6];
     monitor[monitoraddr][1] = IO[21][7];//take the last 2 hexa digits in IO reg
 }
