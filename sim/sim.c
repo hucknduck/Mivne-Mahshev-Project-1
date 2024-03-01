@@ -157,7 +157,7 @@ void sign_extend_immediate(int immediate, char* immstr){
     int err;
     bool ShouldExtend = (immediate >= 2048); //2^11 = 2048, if condition is true it means MSB is 1 
     if (ShouldExtend){ //we checked if MSB is 1
-        err = sprintf(immstr, "FFFFF%3X", immediate);
+        err = sprintf(immstr, "fffff%3x", immediate);
     }
     else {
         err = sprintf(immstr, "00000%03X", immediate);
@@ -344,15 +344,16 @@ bool init_disk(){//todo
 	}//where can we check for errors?
     furthestsectorwritten = sector;
     furthestinsector = row;
-    for (row; sector < 128; row++) {
+    // printf("INIT DISK furthestsectorwritten is %d\n", furthestsectorwritten);
+    // printf("INIT DISK furthestinsector is %d\n", furthestinsector);
+    for (sector; sector < 128; sector++) {
 		//translate instruction to hex code:
-		disk[sector][row] = (char *) malloc(9*sizeof(char));
-        strncpy(disk[sector][row], "00000000", 8);
-        disk[sector][row][8] = '\0';
-        if (row == SECTOR_SIZE){
-            row = 0;
-            sector++;
+		for (row; row< SECTOR_SIZE; row++){
+            disk[sector][row] = (char *) malloc(9*sizeof(char));
+            strncpy(disk[sector][row], "00000000", 8);
+            disk[sector][row][8] = '\0';
         }
+        row = 0;
 	}
     free(buffer);
     return true;
@@ -448,15 +449,22 @@ void write2cycles(){
 void write2diskout(){
     int sector = 0;
     int row = 0;
-    if (furthestaddresswritten == 0){ return; } 
+    // printf("WRITE2DISKOUT 1\n");
+    // printf("WRITE2DISKOUT furthestsectorwritten %d, furthestinsector %d\n", furthestsectorwritten, furthestinsector);
+    if (furthestsectorwritten == 0){ return; } 
+    // printf("WRITE2DISKOUT 2\n");
     for (sector; sector < furthestsectorwritten; sector++){
         for (row = 0; row < 128; row++){
+            // printf("WRITE2DISKOUT writing in first loop sector %d, row %d, %s\n", sector, row, disk[sector][row]);
             fprintf(diskout, "%s\n", disk[sector][row]);
         }
     }
-    printf("WRITE2DISKOUT FINISHED FIRST FOR LOOP\n");
-    for (row = 0; row < furthestinsector; row++){
-        fprintf(cycles, "%s\n", disk[sector][row]);
+    // printf("WRITE2DISKOUT FINISHED FIRST FOR LOOP\n");
+    if (furthestinsector != 0){
+        for (row = 0; row < furthestinsector; row++){
+            // printf("WRITE2DISKOUT writing in second loop sector %d, row %d, %s\n", sector, row, disk[sector][row]);
+            fprintf(diskout, "%s\n", disk[sector][row]);
+        }
     }
     fflush(diskout);
 }
@@ -464,23 +472,27 @@ void write2diskout(){
 void write2monitor(){
     for (int i = 0; i < MONITOR_BUFFER_LEN; i++){
         fprintf(monitortxt, "%s\n", monitor[i]);
+        fflush(monitortxt);
         fprintf(monitoryuv, "%s\n", monitor[i]);
+        fflush(monitoryuv);
     }
-    fflush(monitortxt);
-    fflush(monitoryuv);
 }
 
 void write_to_output(){
     //write at end: *dmemout, *regout,   *cycles,   *diskout, *monitortxt, *monitoryuv;
-    printf("WRITE_TO_OUTPUT dmemout\n");
+    // printf("WRITE_TO_OUTPUT dmemout\n");
     write2dmemout();
-    printf("WRITE_TO_OUTPUT regout\n");
+    fflush(dmemout);
+    // printf("WRITE_TO_OUTPUT regout\n");
     write2regout();
-    printf("WRITE_TO_OUTPUT cycles\n");
+    fflush(regout);
+    // printf("WRITE_TO_OUTPUT cycles\n");
     write2cycles();
-    printf("WRITE_TO_OUTPUT diskout\n");
+    fflush(cycles);
+    // printf("WRITE_TO_OUTPUT diskout\n");
     write2diskout();
-    printf("WRITE_TO_OUTPUT monitor\n");
+    fflush(diskout);
+    // printf("WRITE_TO_OUTPUT monitor\n");
     write2monitor();
 }
 
@@ -544,6 +556,7 @@ void prepare_instruction(){
 
 void save_in_monitor(){
     int monitoraddr = get_bin_value(IO[20]);
+    // printf("WRITING TO MONITOR PXL %d\n", monitoraddr);
     monitor[monitoraddr][0] = IO[21][6];
     monitor[monitoraddr][1] = IO[21][7];//take the last 2 hexa digits in IO reg
 }
@@ -563,9 +576,9 @@ void handle_output(){
     int regnum = (get_bin_value(regs[rt]) + get_bin_value(regs[rs]));
     // printf("HANDLE OUTPUT ON IO %d\n", regnum);
     if (regnum > 22 || regnum < 0){return;}//out of bounds
-    bool cantwrite = (regnum == 3 || regnum == 4 || regnum == 5 || regnum == 17 || regnum == 18 || regnum == 19);//irq or rsvd or diskstatus
-    if (!cantwrite) { return; }
-    strcpy(IO[regnum], regs[rd]);
+    bool cantwrite = (regnum == 17 || regnum == 18 || regnum == 19);//rsvd or diskstatus
+    if (cantwrite) { return; }
+    strncpy(IO[regnum], regs[rm], 8);
     //conditionally write to led.txt or 7seg.txt
     write2hwtrace("WRITE", regnum);
     switch (regnum){
@@ -608,7 +621,7 @@ void run_instruction(){
         case Add:
             val = rsval + rtval + rmval;
             if (rdiswritable) {
-                err = sprintf(regs[rd], "%08X", val);
+                err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             };
             PC++;
@@ -616,7 +629,7 @@ void run_instruction(){
         case Sub:
             val = rsval - rtval - rmval;
             if (rdiswritable) {
-                err = sprintf(regs[rd], "%08X", val);
+                err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             }
             PC++;
@@ -624,7 +637,7 @@ void run_instruction(){
         case Mac:
             val = rsval * rtval + rmval;
             if (rdiswritable) {
-                err = sprintf(regs[rd], "%08X", val);
+                err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             }
             PC++;
@@ -632,7 +645,7 @@ void run_instruction(){
         case And:
             val = rsval & rtval & rmval;
             if (rdiswritable) {    
-                err = sprintf(regs[rd], "%08X", val);
+                err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             }
             PC++;
@@ -640,7 +653,7 @@ void run_instruction(){
         case Or:
             val = rsval | rtval | rmval;
             if (rdiswritable) {
-                err = sprintf(regs[rd], "%08X", val);
+                err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             }
             PC++;
@@ -648,7 +661,7 @@ void run_instruction(){
         case Xor:
             val = rsval ^ rtval ^ rmval;
             if (rdiswritable) {
-                err = sprintf(regs[rd], "%08X", val);
+                err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             }
             PC++;
@@ -657,7 +670,7 @@ void run_instruction(){
             // printf("SLL\n");
             val = rsval << rtval;
             if (rdiswritable) {
-                err = sprintf(regs[rd], "%08X", val);
+                err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             }
             PC++;
@@ -665,7 +678,7 @@ void run_instruction(){
         case Sra: //arithmetic shift with sign extension
             val =  rsval >> rtval;
             if (rdiswritable) {
-                err = sprintf(regs[rd], "%08X", val);
+                err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             }
             PC++;
@@ -673,7 +686,7 @@ void run_instruction(){
         case Srl: // logic shift vacant bits filled up with zeros
             val =  ((unsigned int)rsval) >> rtval;
             if (rdiswritable) {
-                err = sprintf(regs[rd], "%08X", val);
+                err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             }
             PC++;
@@ -704,7 +717,7 @@ void run_instruction(){
             break;
         case Jal:
             if (rdiswritable) {
-                err = sprintf(regs[rd], "%08X", PC+1);
+                err = sprintf(regs[rd], "%08x", PC+1);
                 if (err < 0){}//handle error?   
                 // printf("JAL1\n");
             }
@@ -716,17 +729,17 @@ void run_instruction(){
             if (rdiswritable) {
                 strcpy(regs[rd], mem[(rsval + rtval) % MAX_NUM_OF_LINES]);
                 val = get_bin_value(regs[rd]) + rmval;
-                err = sprintf(regs[rd], "%08X", val);
+                err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             }
-            printf("LW mem read address is %d and it reads %s\n", rsval+rtval, regs[rd]);
+            // printf("LW mem read address is %d and it reads %s\n", rsval+rtval, regs[rd]);
             PC++;
             break;
         case Sw:
             val = get_bin_value(regs[rd]) + rmval;
             err = sprintf(mem[(rsval + rtval) % MAX_NUM_OF_LINES], "%08X", val);
             if (err < 0){}//handle error?
-            printf("SW mem WRITE address is %d and it reads %s\n", rsval+rtval, mem[rsval + rtval]);
+            // printf("SW mem WRITE address is %d and it reads %s\n", rsval+rtval, mem[rsval + rtval]);
             if (rsval + rtval > furthestaddresswritten){
                 furthestaddresswritten = rsval + rtval;
             }
@@ -734,6 +747,8 @@ void run_instruction(){
             break;
         case Reti:
             PC = get_bin_value(IO[7]);
+            // printf("RETI CALLED, NEW PC IS %x\n", PC);
+            in_ISR = false;
             break;
         case In:
             if (rdiswritable) {
@@ -767,6 +782,7 @@ void write2disk(){
     }
     if ((sector + 1)>furthestsectorwritten){
         furthestsectorwritten = sector + 1;
+        // printf("furthestsectorwritten updated to %d\n", furthestsectorwritten);
         furthestinsector = 0;
     }
     strncpy(IO[14], "00000000", 8);
@@ -793,34 +809,34 @@ void update_disk_timer(){
 
 void update_irq(){ // check the irq status and update. only turns them on, the ISR needs to turn them off.
     if (timer == 0) {// irq0
-        strcpy(IO[3], "00000001");
+        strncpy(IO[3], "00000001", 8);
     }
     if (disk_timer == 1024 && strcmp(IO[17], "00000001") == 0) {// irq1
-        strcpy(IO[4], "00000001"); 
+        strncpy(IO[4], "00000001", 8); 
         disk_timer = 0;
-        strcpy(IO[17], "00000000");
+        strncpy(IO[17], "00000000", 8);
     }
     if (havenextirq2 && cyclecount == nextirq2) {// irq2
-        strcpy(IO[5], "00000001");
+        strncpy(IO[5], "00000001", 8);
         get_next_irq2(); 
     }
-    irq = ((strcmp(IO[0],"00000001") == 0 && strcmp(IO[3], "00000001") == 0) || (strcmp(IO[1], "00000001") == 0 && strcmp(IO[4], "00000001") == 0) || (strcmp(IO[2], "00000001") == 0 && strcmp(IO[5], "00000001") == 0));
+    irq = ((strncmp(IO[0],"00000001", 8) == 0 && strncmp(IO[3], "00000001", 8) == 0) || (strncmp(IO[1], "00000001", 8) == 0 && strncmp(IO[4], "00000001", 8) == 0) || (strncmp(IO[2], "00000001", 8) == 0 && strncmp(IO[5], "00000001", 8) == 0));
 }
 void handle_irq(){ // go to ISR and handle 
-    sprintf(IO[7], "%08X", PC);
+    sprintf(IO[7], "%08x", PC);
     PC = get_bin_value(IO[6]);
     in_ISR = true;
 }
 
 void update_timer(){ 
-    if (strcmp(IO[11], "00000001") == 0){//todo: change to strcmp
+    if (strncmp(IO[11], "00000001", 8) == 0){//todo: change to strcmp
         if (timer == max_timer){
             timer = 0;
-            strcpy(IO[12], "00000000");
+            strncpy(IO[12], "00000000", 8);
         }
         else{
             timer++;
-            sprintf(IO[12],"0x%X", timer); // update timecurrent
+            sprintf(IO[12],"%08x", timer); // update timecurrent
         }
     }
 }
@@ -838,11 +854,19 @@ void run_program(){ //main func that runs while we didn't get HALT instruction
     while(running){
         // printf("RUNNING CYCLE %d\n", cyclecount);
         //pre-instruction
+        int secsecsec = furthestsectorwritten;
+        // if (secsecsec != 0){
+        //     printf("current cycle is %d, WHY\n", cyclecount);
+        // }
         if (PC > MAX_NUM_OF_LINES){ break; } // or error?
-        char codedinst[INST_WDT + 10];
-        if (irq && !in_ISR){handle_irq();}
-        if (PC == get_bin_value(IO[15])){in_ISR = false;}
-        strcpy(codedinst, asmcode[PC]);
+        char codedinst[INST_WDT];
+        codedinst[12] = '\0';
+        // if (irq && !in_ISR){handle_irq();}// ------------------------ original location!!!!!!
+        // if (PC == get_bin_value(IO[15])){in_ISR = false;}
+        // if (PC == 27){
+        //     printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
+        // }
+        strncpy(codedinst, asmcode[PC], 12);
         // printf("codedinst is %s\n", codedinst);
         if (codedinst == NULL){ break; } // or error?
         decode_instruction(codedinst);
@@ -856,6 +880,7 @@ void run_program(){ //main func that runs while we didn't get HALT instruction
         //instruction
         run_instruction();
         //post instruction
+        if (irq && !in_ISR){handle_irq();}
         handle_parallel_systems();
         // if (cyclecount == 3){break;}
     }
@@ -900,9 +925,12 @@ void free_mem(){
 void free_disk(){
     int sector, row;
     for (sector = 0; sector<128; sector++){
-        for (row = 0; row < MAX_NUM_OF_LINES; row++){
+        for (row = 0; row < SECTOR_SIZE; row++){
             if (disk[sector][row] != NULL){
                 free(disk[sector][row]);
+            }
+            else{
+                break;
             }
         }
     }
@@ -929,8 +957,8 @@ void free_IO(){
 void free_monitor(){
     int row = 0;
     for (row; row < MONITOR_BUFFER_LEN; row++){
-        if (IO[row] != NULL){
-            free(IO[row]);
+        if (monitor[row] != NULL){
+            free(monitor[row]);
         }
     }
 }

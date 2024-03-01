@@ -1,5 +1,71 @@
 {
     "configurations": [
+
+        {
+            "name": "fibrun sim",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/fibrun/sim.exe",
+            "args": ["imemin.txt",
+             "dmemin.txt",
+              "diskin.txt",
+               "irq2in.txt",
+               "dmemout.txt",
+                "regout.txt",
+                 "trace.txt",
+                  "hwregtrace.txt",
+                   "cycles.txt",
+                    "leds.txt",
+                     "display7seg.txt",
+                      "diskout.txt",
+                       "monitor.txt",
+                        "monitor.yuv"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/fibrun",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:\\msys64\\ucrt64\\bin\\gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "(gdb) Bash on Windows Attach",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}\\asm\\a.exe",
+            "args": ["fib.asm",
+                "imemin.txt",
+                "dmemin.txt"],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:\\msys64\\ucrt64\\bin\\gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
         {
             "name": "(gdb) Launch",
             "type": "cppdbg",
