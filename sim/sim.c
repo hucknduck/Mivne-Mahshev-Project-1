@@ -391,9 +391,13 @@ void decode_instruction(char* instruction){
     //opcode: 2 digits, rd: 1 digit, rs: 1 digit, rt: 1 digit, rm: 1 digit, imm1: 3 digits, imm2: 3 digits
     //000000000000
     // printf("%s\n", instruction);
-    char* temp1 = (char*) malloc(sizeof(char));
-    char* temp2 = (char*) malloc(2*sizeof(char));
-    char* temp3 = (char*) malloc(3*sizeof(char));
+    char* temp1 = (char*) malloc(2*sizeof(char));
+    char* temp2 = (char*) malloc(3*sizeof(char));
+    char* temp3 = (char*) malloc(4*sizeof(char));
+
+    temp1[1] = '\0';
+    temp2[2] = '\0';
+    temp3[3] = '\0';
 
     temp2[0] = instruction[0];
     temp2[1] = instruction[1];
