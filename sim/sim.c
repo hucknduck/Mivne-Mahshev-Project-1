@@ -67,6 +67,81 @@ FILE *dmemout, *regout, *trace, *hwregtrace, *cycles, *leds, *display7seg, *disk
 int opcode, rd, rs, rt, rm, imm1, imm2; //the 7 arguments per instruction
 
 // -------------------------------------------------- HELPERS ------------------------------------------//
+void hex2bin(char* hexstr, char* binstr){
+    int index = 0;
+    char* temp = "";
+    while (hexstr[index] != '\0'){
+        // printf("DO DA DO\n");
+        if (hexstr[index] == '0'){
+            temp = "0000";
+        }
+        else if (hexstr[index] == '1'){
+            temp = "0001";
+        }
+        else if (hexstr[index] == '2'){
+            temp = "0010";
+        }
+        else if (hexstr[index] == '3'){
+            temp = "0011";
+        }
+        else if (hexstr[index] == '4'){
+            temp = "0100";
+        }
+        else if (hexstr[index] == '5'){
+            temp = "0101";
+        }
+        else if (hexstr[index] == '6'){
+            temp = "0110";
+        }
+        else if (hexstr[index] == '7'){
+            temp = "0111";
+        }
+        else if (hexstr[index] == '8'){
+            temp = "1000";
+        }
+        else if (hexstr[index] == '9'){
+            temp = "1001";
+        }
+        else if (hexstr[index] == 'a' || hexstr[index] == 'A'){
+            temp = "1010";
+        }
+        else if (hexstr[index] == 'b' || hexstr[index] == 'B'){
+            temp = "1011";
+        }
+        else if (hexstr[index] == 'c' || hexstr[index] == 'C'){
+            temp = "1100";
+        }
+        else if (hexstr[index] == 'd' || hexstr[index] == 'D'){
+            temp = "1101";
+        }
+        else if (hexstr[index] == 'e' || hexstr[index] == 'E'){
+            temp = "1110";
+        }
+        else if (hexstr[index] == 'f' || hexstr[index] == 'F'){
+            temp = "1111";
+        }
+        else{
+            printf("BADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBAD\n");
+        }
+        strcat(binstr, temp);
+        index++;
+    }
+}
+
+int get_bin_value(char* strval){
+    // printf("str before is %s\n", strval);
+    char temp[33] = "";
+    hex2bin(strval, temp);
+    temp[32] = '\0';
+    // printf("temp is %s\n", temp);
+    int out = strtol(temp+1, NULL, 2);
+    if (temp[0] == '1'){
+        out -= (1LL << 31);
+    }
+    // printf("str after is %x == %d\n", out, out);
+    return out;
+}
+
 void get_next_irq2(){
     char buffer[MAX_LINE_LEN] = "";
     char* err = fgets(buffer, sizeof(buffer), irq2in);
@@ -214,14 +289,15 @@ bool init_code(){
 	//for every line of code inputed:
 	while (fgets(buffer, 14*sizeof(char), imemin) != NULL) {
 		//translate instruction to hex code:
-        asmcode[row] = (char *) malloc(14*sizeof(char));
-        strcpy(asmcode[row], buffer);
+        asmcode[row] = (char *) malloc(13*sizeof(char));
+        asmcode[row][12] = '\0';
+        strncpy(asmcode[row], buffer, 12);
 		// printf("row %d buffer is %s saved is %s\n", row, buffer, asmcode[row]);
         row++;
 	}//where can we check for errors?
     // printf("copied %d rows\n", row);
     for (row; row < MAX_NUM_OF_LINES; row++){
-        asmcode[row] = (char *) malloc(14*sizeof(char));
+        asmcode[row] = (char *) malloc(12*sizeof(char));
         strcpy(asmcode[row], "");
     }
     free(buffer);
@@ -232,30 +308,34 @@ bool init_mem(){
     char* buffer =(char *) malloc(10*sizeof(char));
 	int row = 0;
 	//for every line of code inputed:
-	while (fgets(buffer, sizeof(buffer), dmemin) != NULL) {
+	while (fgets(buffer, 10*sizeof(char), dmemin) != NULL) {
 		//translate instruction to hex code:
-		mem[row] = (char *) malloc(10*sizeof(char));
-        strcpy(mem[row], buffer);
+		mem[row] = (char *) malloc(9*sizeof(char));
+        strncpy(mem[row], buffer, 8);
+        mem[row][8] = '\0';
+        // printf("INIT MEM ADDR %d to %s, buff reads %s\n", row, mem[row], buffer);
 		row++;
 	}//where can we check for errors?
     furthestaddresswritten = row;
     for (row; row < MAX_NUM_OF_LINES; row++){
-        mem[row] = (char *) malloc(10*sizeof(char));
+        mem[row] = (char *) malloc(9*sizeof(char));
         strcpy(mem[row], "00000000");
+        mem[row][8] = '\0';
     }
     free(buffer);
     return true;
 }
 
 bool init_disk(){//todo
-    char* buffer =(char *) malloc(8*sizeof(char));
+    char* buffer =(char *) malloc(10*sizeof(char));
 	int sector = 0;
     int row = 0;
 	//for every line of code inputed:
-	while (fgets(buffer, sizeof(buffer), diskin) != NULL) {
+	while (fgets(buffer, 10*sizeof(char), diskin) != NULL) {
 		//translate instruction to hex code:
-		disk[sector][row] = (char *) malloc(8*sizeof(char));
-        strcpy(disk[sector][row], buffer);
+		disk[sector][row] = (char *) malloc(9*sizeof(char));
+        strncpy(disk[sector][row], buffer, 8);
+        disk[sector][row][8] = '\0';
 		row++;
         if (row == SECTOR_SIZE){
             row = 0;
@@ -266,8 +346,9 @@ bool init_disk(){//todo
     furthestinsector = row;
     for (row; sector < 128; row++) {
 		//translate instruction to hex code:
-		disk[sector][row] = (char *) malloc(8*sizeof(char));
-        strcpy(disk[sector][row], buffer);
+		disk[sector][row] = (char *) malloc(9*sizeof(char));
+        strncpy(disk[sector][row], buffer, 8);
+        disk[sector][row][8] = '\0';
         if (row == SECTOR_SIZE){
             row = 0;
             sector++;
@@ -280,20 +361,23 @@ bool init_disk(){//todo
 bool init_misc(){
     int i;
     for (i = 0; i < NUM_OF_REGS; i++){
-        regs[i] = (char *) malloc(8*sizeof(char));
+        regs[i] = (char *) malloc(9*sizeof(char));
         strcpy(regs[i], "00000000");
+        regs[i][8] = '\0';
         // printf("regs[%d] is %s\n", i, regs[i]);
     }
     
     for (i = 0; i < NUM_OF_IO_REGS ; i++){
-        IO[i] = (char *) malloc(8*sizeof(char));
+        IO[i] = (char *) malloc(9*sizeof(char));
         strcpy(IO[i], "00000000");
+        IO[i][8] = '\0';
         // printf("IO[%d] is %s\n", i, IO[i]);
     }
 
     for (i=0; i < MONITOR_BUFFER_LEN; i++){
-        monitor[i] = (char *) malloc(2*sizeof(char));
+        monitor[i] = (char *) malloc(3*sizeof(char));
         strcpy(monitor[i], "00");
+        monitor[i][2] = '\0';
     }
     get_next_irq2();
     PC = 0;
@@ -401,9 +485,9 @@ void decode_instruction(char* instruction){
 
     temp2[0] = instruction[0];
     temp2[1] = instruction[1];
-    printf("temp2: first %c, second %c\n", temp2[0], temp2[1]);
+    // printf("temp2: first %c, second %c\n", temp2[0], temp2[1]);
     opcode = strtol(temp2, NULL, 16);
-    printf("CODE IS %d\n", opcode);
+    // printf("CODE IS %d\n", opcode);
 
     temp1[0] = instruction[2];
     rd = strtol(temp1, NULL, 16);
@@ -444,13 +528,13 @@ void prepare_instruction(){
 }
 
 void save_in_monitor(){
-    int monitoraddr = strtol(IO[20], NULL, 16);
+    int monitoraddr = get_bin_value(IO[20]);
     monitor[monitoraddr][0] = IO[21][6];
     monitor[monitoraddr][1] = IO[21][7];//take the last 2 hexa digits in IO reg
 }
 
 void handle_input(){
-    int regnum = strtol(regs[rt], NULL, 16) + strtol(regs[rs], NULL, 16);
+    int regnum = get_bin_value(regs[rt]) + get_bin_value(regs[rs]);
     // printf("HANDLE INPUT ON IO %d\n", regnum);
     if (regnum > 22 || regnum < 0) {return;}//out of bounds
     strcpy(regs[rd], IO[regnum]);
@@ -461,7 +545,7 @@ void handle_input(){
 }
 
 void handle_output(){
-    int regnum = (strtol(regs[rt], NULL, 16) + strtol(regs[rs], NULL, 16));
+    int regnum = (get_bin_value(regs[rt]) + get_bin_value(regs[rs]));
     // printf("HANDLE OUTPUT ON IO %d\n", regnum);
     if (regnum > 22 || regnum < 0){return;}//out of bounds
     bool cantwrite = (regnum == 3 || regnum == 4 || regnum == 5 || regnum == 17 || regnum == 18 || regnum == 19);//irq or rsvd or diskstatus
@@ -487,22 +571,24 @@ void handle_output(){
 }
 
 void run_instruction(){
-    printf("PC IS %d\n", PC);
-    printf("opcode is %d\n", opcode);
-    printf("rd is %d\n", rd);
-    printf("rs is %d\n", rs );
-    printf("rt is %d\n", rt);
-    printf("rm is %d\n", rm);
-    printf("imm1 is %d\n", imm1);
-    printf("imm2 is %d\n", imm2);
-    printf("regs[rs] is %s\n", regs[rs]);
+    // printf("PC IS %d\n", PC);
+    // printf("opcode is %d\n", opcode);
+    // printf("rd is %d\n", rd);
+    // printf("rs is %d\n", rs );
+    // printf("rt is %d\n", rt);
+    // printf("rm is %d\n", rm);
+    // printf("imm1 is %d\n", imm1);
+    // printf("imm2 is %d\n", imm2);
+    // printf("regs[rs] is %s\n", regs[rs]);
+    // printf("regs[imm1] is %s == %x\n", regs[1], get_bin_value(regs[1]));
+    // printf("regs[imm2] is %s == %x\n", regs[2], get_bin_value(regs[2]));
     int val;
     bool branch;
     bool rdiswritable = !(rd == 0 || rd == 1 || rd == 2);//false when trying to write to $zero or $imm1,2
     int err;
-    int rsval = strtol(regs[rs], NULL, 16);
-    int rtval = strtol(regs[rt], NULL, 16);
-    int rmval = strtol(regs[rm], NULL, 16);
+    int rsval = get_bin_value(regs[rs]);
+    int rtval = get_bin_value(regs[rt]);
+    int rmval = get_bin_value(regs[rm]);
     switch (opcode){
         case Add:
             val = rsval + rtval + rmval;
@@ -614,20 +700,22 @@ void run_instruction(){
             // printf("LW\n");
             if (rdiswritable) {
                 strcpy(regs[rd], mem[(rsval + rtval) % MAX_NUM_OF_LINES]);
-                val = strtol(regs[rd], NULL, 16) + rmval;
+                val = get_bin_value(regs[rd]) + rmval;
                 err = sprintf(regs[rd], "%08X", val);
                 if (err < 0){}//handle error?
             }
+            printf("LW mem read address is %d and it reads %s\n", rsval+rtval, regs[rd]);
             PC++;
             break;
         case Sw:
-            val = strtol(regs[rd], NULL, 16) + rmval;
+            val = get_bin_value(regs[rd]) + rmval;
             err = sprintf(mem[(rsval + rtval) % MAX_NUM_OF_LINES], "%08X", val);
             if (err < 0){}//handle error?
+            printf("SW mem WRITE address is %d and it reads %s\n", rsval+rtval, mem[rsval + rtval]);
             PC++;
             break;
         case Reti:
-            PC = strtol(IO[7], NULL, 16);
+            PC = get_bin_value(IO[7]);
             break;
         case In:
             if (rdiswritable) {
@@ -653,8 +741,8 @@ void write2disk(){
     int sector;
     int MEMaddress;
     int i;
-    sector = strtol(IO[15], NULL, 16); // sector that we write to in decimal
-    MEMaddress = strtol(IO[16], NULL, 16); // address of the buffer in the main memory that we read from in decimal
+    sector = get_bin_value(IO[15]); // sector that we write to in decimal
+    MEMaddress = get_bin_value(IO[16]); // address of the buffer in the main memory that we read from in decimal
     for (i = 0; i < 128; i++) {
         strcpy(disk[sector][i], mem[MEMaddress]);
         MEMaddress++;
@@ -666,8 +754,8 @@ void read_from_disk(){
     int sector;
     int MEMaddress;
     int i;
-    sector = strtol(IO[15], NULL, 16); // sector that we read from in decimal
-    MEMaddress = strtol(IO[16], NULL, 16); // address of the buffer in the main memory that we write to in decimal
+    sector = get_bin_value(IO[15]); // sector that we read from in decimal
+    MEMaddress = get_bin_value(IO[16]); // address of the buffer in the main memory that we write to in decimal
     for (i = 0; i < 128; i++){
         strcpy(mem[MEMaddress], disk[sector][i]);
         MEMaddress++;
@@ -698,7 +786,7 @@ void update_irq(){ // check the irq status and update. only turns them on, the I
 }
 void handle_irq(){ // go to ISR and handle 
     sprintf(IO[7], "%08X", PC);
-    PC = strtol(IO[6], NULL, 16);
+    PC = get_bin_value(IO[6]);
     in_ISR = true;
 }
 
@@ -726,12 +814,12 @@ void handle_parallel_systems(){
 
 void run_program(){ //main func that runs while we didn't get HALT instruction
     while(running){
-        printf("RUNNING CYCLE %d\n", cyclecount);
+        // printf("RUNNING CYCLE %d\n", cyclecount);
         //pre-instruction
         if (PC > MAX_NUM_OF_LINES){ break; } // or error?
         char codedinst[INST_WDT + 10];
         if (irq && !in_ISR){handle_irq();}
-        if (PC == strtol(IO[15], NULL, 16)){in_ISR = false;}
+        if (PC == get_bin_value(IO[15])){in_ISR = false;}
         strcpy(codedinst, asmcode[PC]);
         // printf("codedinst is %s\n", codedinst);
         if (codedinst == NULL){ break; } // or error?
@@ -768,15 +856,7 @@ void close_files(){
 	fclose(monitortxt);
 	fclose(monitoryuv);
 }
-/*char* asmcode[MAX_NUM_OF_LINES]; //PC will read from this array to get current instruction
-char* mem[MAX_NUM_OF_LINES]; //write dmemin here, and output this to dmemout
-int furthestaddresswritten; //so we know when to stop writing "00000000" in dmemout
-char* disk[NUM_OF_SECTORS][SECTOR_SIZE];
-int furthestsectorwritten; // so we know when to stop writing "00000000" in diskout
-int furthestinsector;
-char* regs[NUM_OF_REGS]; //hold regs value, same encoding as in PDF
-char* IO[NUM_OF_IO_REGS]; //hold IO regs value, same encoding as in PDF
-char* monitor[MONITOR_BUFFER_LEN];*/
+
 void free_code(){
     int row = 0;
     for (row; row < MAX_NUM_OF_LINES; row++){
