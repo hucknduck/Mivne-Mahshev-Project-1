@@ -7,7 +7,7 @@
 #define MAX_LABEL_LEN 50
 #define MAX_NUM_OF_LINES 4096
 #define NUM_OF_SECTORS 128
-#define SECTOR_SIZE 512 //Bytes
+#define SECTOR_SIZE 128 //words
 #define INST_WDT 13 //Bytes
 #define MEM_WDT 9 //Bytes
 #define NUM_OF_REGS 16
@@ -347,7 +347,7 @@ bool init_disk(){//todo
     for (row; sector < 128; row++) {
 		//translate instruction to hex code:
 		disk[sector][row] = (char *) malloc(9*sizeof(char));
-        strncpy(disk[sector][row], buffer, 8);
+        strncpy(disk[sector][row], "00000000", 8);
         disk[sector][row][8] = '\0';
         if (row == SECTOR_SIZE){
             row = 0;
@@ -409,18 +409,22 @@ bool init_values(){ //init values of regs, IO, and copy imemin and dmemin into a
 void write2hwtrace(char* rw, int IOnum) {
     char* IOreg = get_IO_reg_name(IOnum);
     fprintf(hwregtrace, "%d %s %s %s\n", cyclecount, rw, IOreg, IO[IOnum]);
+    fflush(hwregtrace);
 }
 
 void write2hw7seg(){
     fprintf(display7seg, "%d %s\n", cyclecount, IO[DISPLAY7SEGREG]);
+    fflush(display7seg);
 }
 
 void write2hwleds(){
     fprintf(leds, "%d %s\n", cyclecount, IO[LEDSREG]);
+    fflush(leds);
 }
 
 void output2trace(){
     fprintf(trace, "%03X %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n", PC, asmcode[PC], regs[0], regs[1], regs[2], regs[3], regs[4], regs[5], regs[6], regs[7], regs[8], regs[9], regs[10], regs[11], regs[12], regs[13], regs[14], regs[15]);
+    fflush(trace);
 }
 
 void write2dmemout(){
@@ -428,29 +432,33 @@ void write2dmemout(){
     for (row; row<furthestaddresswritten; row++){
         fprintf(dmemout, "%s\n", mem[row]);
     }
+    fflush(dmemout);
 }
 
 void write2regout(){
     fprintf(regout, "%s %s %s %s %s %s %s %s %s %s %s %s %s\n", regs[3], regs[4], regs[5], regs[6], regs[7], regs[8], regs[9], regs[10], regs[11], regs[12], regs[13], regs[14], regs[15]);
+    fflush(regout);
 }
 
 void write2cycles(){
     fprintf(cycles, "%d\n", cyclecount);
+    fflush(cycles);
 }
 
 void write2diskout(){
     int sector = 0;
     int row = 0;
+    if (furthestaddresswritten == 0){ return; } 
     for (sector; sector < furthestsectorwritten; sector++){
         for (row = 0; row < 128; row++){
             fprintf(diskout, "%s\n", disk[sector][row]);
         }
     }
-    if (furthestsectorwritten != 0) {
-        for (row = 0; row < furthestinsector; row++){
-            fprintf(cycles, "%s\n", disk[sector][row]);
-        }
+    printf("WRITE2DISKOUT FINISHED FIRST FOR LOOP\n");
+    for (row = 0; row < furthestinsector; row++){
+        fprintf(cycles, "%s\n", disk[sector][row]);
     }
+    fflush(diskout);
 }
 
 void write2monitor(){
@@ -458,14 +466,21 @@ void write2monitor(){
         fprintf(monitortxt, "%s\n", monitor[i]);
         fprintf(monitoryuv, "%s\n", monitor[i]);
     }
+    fflush(monitortxt);
+    fflush(monitoryuv);
 }
 
 void write_to_output(){
     //write at end: *dmemout, *regout,   *cycles,   *diskout, *monitortxt, *monitoryuv;
+    printf("WRITE_TO_OUTPUT dmemout\n");
     write2dmemout();
+    printf("WRITE_TO_OUTPUT regout\n");
     write2regout();
+    printf("WRITE_TO_OUTPUT cycles\n");
     write2cycles();
+    printf("WRITE_TO_OUTPUT diskout\n");
     write2diskout();
+    printf("WRITE_TO_OUTPUT monitor\n");
     write2monitor();
 }
 
@@ -537,9 +552,9 @@ void handle_input(){
     int regnum = get_bin_value(regs[rt]) + get_bin_value(regs[rs]);
     // printf("HANDLE INPUT ON IO %d\n", regnum);
     if (regnum > 22 || regnum < 0) {return;}//out of bounds
-    strcpy(regs[rd], IO[regnum]);
+    strncpy(regs[rd], IO[regnum], 8);
     if (regnum == MONITORCMDREG) {
-        strcpy(regs[rd], "00000000");
+        strncpy(regs[rd], "00000000", 8);
     }
     write2hwtrace("READ", regnum);
 }
@@ -561,7 +576,7 @@ void handle_output(){
             write2hwleds();
             break;
         case MONITORCMDREG:
-            if (strcmp(IO[regnum], "00000001") == 0){
+            if (strncmp(IO[regnum], "00000001", 8) == 0){
                 save_in_monitor();
             }
             break;
@@ -712,6 +727,9 @@ void run_instruction(){
             err = sprintf(mem[(rsval + rtval) % MAX_NUM_OF_LINES], "%08X", val);
             if (err < 0){}//handle error?
             printf("SW mem WRITE address is %d and it reads %s\n", rsval+rtval, mem[rsval + rtval]);
+            if (rsval + rtval > furthestaddresswritten){
+                furthestaddresswritten = rsval + rtval;
+            }
             PC++;
             break;
         case Reti:
@@ -744,10 +762,14 @@ void write2disk(){
     sector = get_bin_value(IO[15]); // sector that we write to in decimal
     MEMaddress = get_bin_value(IO[16]); // address of the buffer in the main memory that we read from in decimal
     for (i = 0; i < 128; i++) {
-        strcpy(disk[sector][i], mem[MEMaddress]);
+        strncpy(disk[sector][i], mem[MEMaddress], 8);
         MEMaddress++;
     }
-    strcpy(IO[14], "00000000");
+    if ((sector + 1)>furthestsectorwritten){
+        furthestsectorwritten = sector + 1;
+        furthestinsector = 0;
+    }
+    strncpy(IO[14], "00000000", 8);
 }
 
 void read_from_disk(){
@@ -760,11 +782,11 @@ void read_from_disk(){
         strcpy(mem[MEMaddress], disk[sector][i]);
         MEMaddress++;
     }
-    strcpy(IO[14], "00000000");
+    strncpy(IO[14], "00000000", 8);
 }
 
 void update_disk_timer(){
-    if (strcmp(IO[14], "00000000") == 0 && strcmp(IO[17], "00000001") == 0) { // if we executed the read/write command we wait 1024 cycles while the disk is busy
+    if (strncmp(IO[14], "00000000", 8) == 0 && strncmp(IO[17], "00000001", 8) == 0) { // if we executed the read/write command we wait 1024 cycles while the disk is busy
         disk_timer++;
     }
 }
@@ -923,8 +945,11 @@ void free_all(){
 }
 
 void finalize(){ //release everything for program end and print last things for output files if needed
+    printf("FINALIZE write_to_output\n");
     write_to_output();
+    printf("FINALIZE free_all\n");
     free_all();
+    printf("FINALIZE close_files\n");
     close_files();
 }
 
