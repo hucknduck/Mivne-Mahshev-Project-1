@@ -3,7 +3,7 @@
 	add $s0, $zero, $zero, $zero, 0x0, 0x0		 # set $s0 to first pixel
 	srl $s1, $imm1, $imm2, $zero, 0xFFF, 16		 # set $s1 to final pixel, 0xFFFF
 	add $s1, $s1, $imm1, $zero, 1, 0		 # set $s1 to # of pixels
-LOOP:							
+LOOP:
 	srl $t0, $s0, $imm1, $zero, 8, 0		 # $t0 = $s0[15:8] = rownum = Y
 	and $t1, $s0, $imm1, $imm2, 0xFF, 0xFFF		 # $t1 = $s0[7:0] = columnnum = x
 	sub $t0, $t0, $imm1, $zero, 128, 0		 # normalize Y to center of screen
@@ -24,3 +24,4 @@ OUTPUT:
 	bne $zero, $s0, $s1, $imm2, 0, LOOP		 # LOOP if Current pixel is not # of pixels
 EXIT:
 	halt, $zero, $zero, $zero, $zero, 0, 0
+	.word 256 100

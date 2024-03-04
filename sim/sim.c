@@ -215,60 +215,74 @@ bool init_files(char* argv[]){ //open all FILE structs. return false if failed
     //input files
     imemin = fopen(argv[1], "r");
 	if (imemin == NULL) {
-		return false;
+		printf("ERROR OPENING IMEMIN\n");
+        return false;
 	}
     dmemin = fopen(argv[2], "r");
 	if (dmemin == NULL) {
+        printf("ERROR OPENING DMEMIN\n");
 		return false;
 	}
     diskin = fopen(argv[3], "r");
 	if (diskin == NULL) {
+        printf("ERROR OPENING DISKIN\n");
 		return false;
 	}
     irq2in = fopen(argv[4], "r");
 	if (irq2in == NULL) {
+        printf("ERROR OPENING IRQ2IN\n");
 		return false;
 	}
 
     //output files
     dmemout = fopen(argv[5], "w"); 
 	if (dmemout == NULL) {
+        printf("ERROR OPENING IMEMIN\n");
 		return false;
 	}
     regout = fopen(argv[6], "w"); 
 	if (regout == NULL) {
+        printf("ERROR OPENING IMEMIN\n");
 		return false;
 	}
     trace = fopen(argv[7], "w"); 
 	if (trace == NULL) {
+        printf("ERROR OPENING IMEMIN\n");
 		return false;
 	}
     hwregtrace = fopen(argv[8], "w"); 
 	if (hwregtrace == NULL) {
+        printf("ERROR OPENING IMEMIN\n");
 		return false;
 	}
     cycles = fopen(argv[9], "w"); 
 	if (cycles == NULL) {
+        printf("ERROR OPENING IMEMIN\n");
 		return false;
 	}
     leds = fopen(argv[10], "w"); 
 	if (leds == NULL) {
+        printf("ERROR OPENING IMEMIN\n");
 		return false;
 	}
     display7seg = fopen(argv[11], "w"); 
 	if (display7seg == NULL) {
+        printf("ERROR OPENING IMEMIN\n");
 		return false;
 	}
     diskout = fopen(argv[12], "w"); 
 	if (diskout == NULL) {
+        printf("ERROR OPENING IMEMIN\n");
 		return false;
 	}
     monitortxt = fopen(argv[13], "w"); 
 	if (monitortxt == NULL) {
+        printf("ERROR OPENING IMEMIN\n");
 		return false;
 	}
     monitoryuv = fopen(argv[14], "w"); 
 	if (monitoryuv == NULL) {
+        printf("ERROR OPENING IMEMIN\n");
 		return false;
 	}
 
@@ -466,6 +480,12 @@ void write2monitor(){
         fflush(monitortxt);
         fprintf(monitoryuv, "%s\n", monitor[i]);
         fflush(monitoryuv);
+        // if (i%256 == 0){
+        //     fprintf(monitortxt, "\n");
+        //     fflush(monitortxt);
+        //     fprintf(monitoryuv, "\n");
+        //     fflush(monitoryuv);
+        // }
     }
 }
 
@@ -734,8 +754,8 @@ void run_instruction(){
             err = sprintf(mem[(rsval + rtval) % MAX_NUM_OF_LINES], "%08X", val);
             if (err < 0){}//handle error?
             // printf("SW mem WRITE address is %d and it reads %s\n", rsval+rtval, mem[rsval + rtval]);
-            if (rsval + rtval > furthestaddresswritten){
-                furthestaddresswritten = rsval + rtval;
+            if (rsval + rtval + 1 > furthestaddresswritten){
+                furthestaddresswritten = rsval + rtval + 1;
             }
             PC++;
             break;

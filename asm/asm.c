@@ -346,7 +346,7 @@ char* handle_register(char** str){
 		return $S1;
 	}
 	else if (strcmp(*str, "$s2") == 0){
-		return $S1;
+		return $S2;
 	}
 	else if (strcmp(*str, "$gp") == 0){
 		return $GP;

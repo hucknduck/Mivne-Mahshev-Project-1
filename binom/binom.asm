@@ -29,5 +29,5 @@ RET:
 OUT:
 	sw $v0, $imm1, $zero, $zero, 0x102, 0x0
 	halt $zero, $zero, $zero, $zero, 0x0, 0x0
-	.word 256 10
-	.word 257 2
+	.word 256 20
+	.word 257 8
