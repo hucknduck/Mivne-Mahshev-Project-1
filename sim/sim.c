@@ -8,15 +8,15 @@
 #define MAX_NUM_OF_LINES 4096
 #define NUM_OF_SECTORS 128
 #define SECTOR_SIZE 128 //words
-#define INST_WDT 13 //Bytes
-#define MEM_WDT 9 //Bytes
+#define INST_WDT 13 //Bytes + 1 for '/0'
+#define MEM_WDT 9 //Bytes + 1 for '/0'
 #define NUM_OF_REGS 16
 #define NUM_OF_IO_REGS 23
 #define MONITOR_BUFFER_LEN 256*256
 
-
-#define DISPLAY7SEGREG 10
 #define LEDSREG 9
+#define DISPLAY7SEGREG 10
+#define DISKCMDREG 14
 #define MONITORCMDREG 22
 
 #define Add 0
@@ -67,12 +67,17 @@ FILE *dmemout, *regout, *trace, *hwregtrace, *cycles, *leds, *display7seg, *disk
 
 int opcode, rd, rs, rt, rm, imm1, imm2; //the 7 arguments per instruction
 
+//--------------------------------------------------- Necessary Headers ---------------------------------//
+void read_from_disk(void);
+void write2disk(void);
+void get_next_irq2(void);
+void save_in_monitor(void);
+
 // -------------------------------------------------- HELPERS ------------------------------------------//
 void hex2bin(char* hexstr, char* binstr){
     int index = 0;
     char* temp = "";
     while (hexstr[index] != '\0'){
-        // printf("DO DA DO\n");
         if (hexstr[index] == '0'){
             temp = "0000";
         }
@@ -130,28 +135,14 @@ void hex2bin(char* hexstr, char* binstr){
 }
 
 int get_bin_value(char* strval){
-    // printf("str before is %s\n", strval);
     char temp[33] = "";
     hex2bin(strval, temp);
     temp[32] = '\0';
-    // printf("temp is %s\n", temp);
     int out = strtol(temp+1, NULL, 2);
-    if (temp[0] == '1'){
+    if (temp[0] == '1'){// if MSB is 1
         out -= (1LL << 31);
     }
-    // printf("str after is %x == %d\n", out, out);
     return out;
-}
-
-void get_next_irq2(){
-    char buffer[MAX_LINE_LEN] = "";
-    char* err = fgets(buffer, sizeof(buffer), irq2in);
-    if (err == NULL){
-        havenextirq2 = false;
-        return;
-    }
-    havenextirq2 = true;
-    nextirq2 = strtol(buffer, NULL, 0);
 }
 
 void sign_extend_immediate(int immediate, char* immstr){
@@ -285,18 +276,16 @@ bool init_files(char* argv[]){ //open all FILE structs. return false if failed
 }
 
 bool init_code(){
-    char* buffer =(char *) malloc(14*sizeof(char));
+    char* buffer =(char *) malloc((INST_WDT + 1)*sizeof(char)); //line size is 14: 12 for inst, 1 for '\n' and 1 for '\0'
 	int row = 0;
 	//for every line of code inputed:
-	while (fgets(buffer, 14*sizeof(char), imemin) != NULL) {
+	while (fgets(buffer, (INST_WDT + 1)*sizeof(char), imemin) != NULL) {
 		//translate instruction to hex code:
-        asmcode[row] = (char *) malloc(13*sizeof(char));
+        asmcode[row] = (char *) malloc(INST_WDT*sizeof(char));
         asmcode[row][12] = '\0';
-        strncpy(asmcode[row], buffer, 12);
-		// printf("row %d buffer is %s saved is %s\n", row, buffer, asmcode[row]);
+        strncpy(asmcode[row], buffer, INST_WDT - 1);//copies line without '\n'
         row++;
-	}//where can we check for errors?
-    // printf("copied %d rows\n", row);
+	}
     for (row; row < MAX_NUM_OF_LINES; row++){
         asmcode[row] = (char *) malloc(12*sizeof(char));
         strcpy(asmcode[row], "");
@@ -306,20 +295,19 @@ bool init_code(){
 }
 
 bool init_mem(){
-    char* buffer =(char *) malloc(10*sizeof(char));
+    char* buffer =(char *) malloc((MEM_WDT + 1)*sizeof(char));//line size is 10: 8 for word, 1 for '\n' and 1 for '\0'
 	int row = 0;
 	//for every line of code inputed:
-	while (fgets(buffer, 10*sizeof(char), dmemin) != NULL) {
+	while (fgets(buffer, (MEM_WDT+1)*sizeof(char), dmemin) != NULL) {
 		//translate instruction to hex code:
-		mem[row] = (char *) malloc(9*sizeof(char));
+		mem[row] = (char *) malloc(MEM_WDT*sizeof(char));
         strncpy(mem[row], buffer, 8);
         mem[row][8] = '\0';
-        // printf("INIT MEM ADDR %d to %s, buff reads %s\n", row, mem[row], buffer);
-		row++;
+        row++;
 	}//where can we check for errors?
     furthestaddresswritten = row;
     for (row; row < MAX_NUM_OF_LINES; row++){
-        mem[row] = (char *) malloc(9*sizeof(char));
+        mem[row] = (char *) malloc(MEM_WDT*sizeof(char));
         strcpy(mem[row], "00000000");
         mem[row][8] = '\0';
     }
@@ -328,13 +316,13 @@ bool init_mem(){
 }
 
 bool init_disk(){//todo
-    char* buffer =(char *) malloc(10*sizeof(char));
+    char* buffer =(char *) malloc((MEM_WDT + 1)*sizeof(char));
 	int sector = 0;
     int row = 0;
 	//for every line of code inputed:
-	while (fgets(buffer, 10*sizeof(char), diskin) != NULL) {
+	while (fgets(buffer, (MEM_WDT + 1)*sizeof(char), diskin) != NULL) {
 		//translate instruction to hex code:
-		disk[sector][row] = (char *) malloc(9*sizeof(char));
+		disk[sector][row] = (char *) malloc(MEM_WDT*sizeof(char));
         strncpy(disk[sector][row], buffer, 8);
         disk[sector][row][8] = '\0';
 		row++;
@@ -345,12 +333,10 @@ bool init_disk(){//todo
 	}//where can we check for errors?
     furthestsectorwritten = sector;
     furthestinsector = row;
-    // printf("INIT DISK furthestsectorwritten is %d\n", furthestsectorwritten);
-    // printf("INIT DISK furthestinsector is %d\n", furthestinsector);
-    for (sector; sector < 128; sector++) {
+    for (sector; sector < NUM_OF_SECTORS; sector++) {
 		//translate instruction to hex code:
 		for (row; row< SECTOR_SIZE; row++){
-            disk[sector][row] = (char *) malloc(9*sizeof(char));
+            disk[sector][row] = (char *) malloc(MEM_WDT*sizeof(char));
             strncpy(disk[sector][row], "00000000", 8);
             disk[sector][row][8] = '\0';
         }
@@ -363,21 +349,21 @@ bool init_disk(){//todo
 bool init_misc(){
     int i;
     for (i = 0; i < NUM_OF_REGS; i++){
-        regs[i] = (char *) malloc(9*sizeof(char));
+        regs[i] = (char *) malloc(MEM_WDT*sizeof(char));
         strcpy(regs[i], "00000000");
         regs[i][8] = '\0';
         // printf("regs[%d] is %s\n", i, regs[i]);
     }
     
     for (i = 0; i < NUM_OF_IO_REGS ; i++){
-        IO[i] = (char *) malloc(9*sizeof(char));
+        IO[i] = (char *) malloc(MEM_WDT*sizeof(char));
         strcpy(IO[i], "00000000");
         IO[i][8] = '\0';
         // printf("IO[%d] is %s\n", i, IO[i]);
     }
 
     for (i=0; i < MONITOR_BUFFER_LEN; i++){
-        monitor[i] = (char *) malloc(3*sizeof(char));
+        monitor[i] = (char *) malloc(3*sizeof(char));// 1B + '\0'
         strcpy(monitor[i], "00");
         monitor[i][2] = '\0';
     }
@@ -459,7 +445,7 @@ void write2diskout(){
     if (furthestsectorwritten == 0){ return; } 
     // printf("WRITE2DISKOUT 2\n");
     for (sector; sector < furthestsectorwritten; sector++){
-        for (row = 0; row < 128; row++){
+        for (row = 0; row < SECTOR_SIZE; row++){
             // printf("WRITE2DISKOUT writing in first loop sector %d, row %d, %s\n", sector, row, disk[sector][row]);
             fprintf(diskout, "%s\n", disk[sector][row]);
         }
@@ -559,16 +545,6 @@ void prepare_instruction(){
     sign_extend_immediate(imm2, regs[2]);
 }
 
-void save_in_monitor(){
-    int monitoraddr = get_bin_value(IO[20]);
-    // printf("WRITING TO MONITOR PXL %d\n", monitoraddr);
-    if (monitoraddr + 1 > furthestpixel){
-        furthestpixel = monitoraddr + 1;
-    }
-    monitor[monitoraddr][0] = IO[21][6];
-    monitor[monitoraddr][1] = IO[21][7];//take the last 2 hexa digits in IO reg
-}
-
 void handle_input(){
     int regnum = get_bin_value(regs[rt]) + get_bin_value(regs[rs]);
     // printf("HANDLE INPUT ON IO %d\n", regnum);
@@ -590,11 +566,21 @@ void handle_output(){
     //conditionally write to led.txt or 7seg.txt
     write2hwtrace("WRITE", regnum);
     switch (regnum){
+        case LEDSREG:
+            write2hwleds();
+            break;
         case DISPLAY7SEGREG:
             write2hw7seg();
             break;
-        case LEDSREG:
-            write2hwleds();
+        case DISKCMDREG:
+            if (strncmp(IO[regnum], "00000001", 8) == 0){
+                strncpy(IO[17], "00000001", 8); // disk is now busy
+                read_from_disk();
+            }
+            else if (strncmp(IO[regnum], "00000002", 8) == 0){
+                strncpy(IO[17], "00000001", 8);// disk is now busy
+                write2disk();
+            }
             break;
         case MONITORCMDREG:
             if (strncmp(IO[regnum], "00000001", 8) == 0){
@@ -784,7 +770,7 @@ void write2disk(){
     int i;
     sector = get_bin_value(IO[15]); // sector that we write to in decimal
     MEMaddress = get_bin_value(IO[16]); // address of the buffer in the main memory that we read from in decimal
-    for (i = 0; i < 128; i++) {
+    for (i = 0; i < SECTOR_SIZE; i++) {
         strncpy(disk[sector][i], mem[MEMaddress], 8);
         MEMaddress++;
     }
@@ -802,7 +788,7 @@ void read_from_disk(){
     int i;
     sector = get_bin_value(IO[15]); // sector that we read from in decimal
     MEMaddress = get_bin_value(IO[16]); // address of the buffer in the main memory that we write to in decimal
-    for (i = 0; i < 128; i++){
+    for (i = 0; i < SECTOR_SIZE; i++){
         strcpy(mem[MEMaddress], disk[sector][i]);
         MEMaddress++;
     }
@@ -816,7 +802,7 @@ void update_disk_timer(){
 }
 
 void update_irq(){ // check the irq status and update. only turns them on, the ISR needs to turn them off.
-    if (timer == 0) {// irq0
+    if (timer == 0 && strcmp(IO[11], "00000001") == 0) {// irq0
         strncpy(IO[3], "00000001", 8);
     }
     if (disk_timer == 1024 && strcmp(IO[17], "00000001") == 0) {// irq1
@@ -830,6 +816,7 @@ void update_irq(){ // check the irq status and update. only turns them on, the I
     }
     irq = ((strncmp(IO[0],"00000001", 8) == 0 && strncmp(IO[3], "00000001", 8) == 0) || (strncmp(IO[1], "00000001", 8) == 0 && strncmp(IO[4], "00000001", 8) == 0) || (strncmp(IO[2], "00000001", 8) == 0 && strncmp(IO[5], "00000001", 8) == 0));
 }
+
 void handle_irq(){ // go to ISR and handle 
     sprintf(IO[7], "%08x", PC);
     PC = get_bin_value(IO[6]);
@@ -837,7 +824,7 @@ void handle_irq(){ // go to ISR and handle
 }
 
 void update_timer(){ 
-    if (strncmp(IO[11], "00000001", 8) == 0){//todo: change to strcmp
+    if (strncmp(IO[11], "00000001", 8) == 0){
         if (timer == max_timer){
             timer = 0;
             strncpy(IO[12], "00000000", 8);
@@ -847,6 +834,31 @@ void update_timer(){
             sprintf(IO[12],"%08x", timer); // update timecurrent
         }
     }
+    else{
+        timer = 0;
+        strncpy(IO[12], "00000000", 8);
+    }
+}
+
+void get_next_irq2(){
+    char buffer[MAX_LINE_LEN] = "";
+    char* err = fgets(buffer, sizeof(buffer), irq2in);
+    if (err == NULL){
+        havenextirq2 = false;
+        return;
+    }
+    havenextirq2 = true;
+    nextirq2 = strtol(buffer, NULL, 0);
+}
+
+void save_in_monitor(){
+    int monitoraddr = get_bin_value(IO[20]);
+    // printf("WRITING TO MONITOR PXL %d\n", monitoraddr);
+    if (monitoraddr + 1 > furthestpixel){
+        furthestpixel = monitoraddr + 1;
+    }
+    monitor[monitoraddr][0] = IO[21][6];
+    monitor[monitoraddr][1] = IO[21][7];//take the last 2 hexa digits in IO reg
 }
 
 void handle_parallel_systems(){
@@ -860,37 +872,24 @@ void handle_parallel_systems(){
 
 void run_program(){ //main func that runs while we didn't get HALT instruction
     while(running){
-        // printf("RUNNING CYCLE %d\n", cyclecount);
         //pre-instruction
-        int secsecsec = furthestsectorwritten;
-        // if (secsecsec != 0){
-        //     printf("current cycle is %d, WHY\n", cyclecount);
-        // }
         if (PC > MAX_NUM_OF_LINES){ break; } // or error?
         char codedinst[INST_WDT];
         codedinst[12] = '\0';
-        // if (irq && !in_ISR){handle_irq();}// ------------------------ original location!!!!!!
-        // if (PC == get_bin_value(IO[15])){in_ISR = false;}
-        // if (PC == 27){
-        //     printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
-        // }
         strncpy(codedinst, asmcode[PC], 12);
-        // printf("codedinst is %s\n", codedinst);
         if (codedinst == NULL){ break; } // or error?
         decode_instruction(codedinst);
         prepare_instruction();
+        
         //output
-        //writing to output is here since we want to see the immediates in the trace in regs[1], regs[2] but not anything else we have done
         output2trace();
-
-        // printf("codedinst is %s, inst is %d\n", codedinst, opcode);
-
+        
         //instruction
         run_instruction();
+        
         //post instruction
         if (irq && !in_ISR){handle_irq();}
         handle_parallel_systems();
-        // if (cyclecount == 3){break;}
     }
 }
 
