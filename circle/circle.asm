@@ -6,7 +6,7 @@
 LOOP:							
 	srl $t0, $s0, $imm1, $zero, 8, 0		 # $t0 = $s0[15:8] = rownum = Y
 	and $t1, $s0, $imm1, $imm2, 0xFF, 0xFFF		 # $t1 = $s0[7:0] = columnnum = x
-	sub $t0, $t0, $imm1, $zer0, 128, 0		 # normalize Y to center of screen
+	sub $t0, $t0, $imm1, $zero, 128, 0		 # normalize Y to center of screen
 	sub $t1, $t1, $imm1, $zero, 128, 0		 # normalize X to center of screen
 	mac $t2, $t1, $t1, $zero, 0, 0			 # $t2 = X^2
 	mac $t2, $t0, $t0, $t2, 0, 0			 # $t2 = X^2 + Y^2	

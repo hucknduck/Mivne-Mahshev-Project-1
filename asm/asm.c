@@ -61,6 +61,23 @@ struct labels* label;
 
 int* dmem;
 
+bool is_empty_line_or_comment(char* line){
+	if (*line == '\n')
+		return true;
+	char* comment_ptr = strstr(line, "#");
+	if (comment_ptr == NULL)
+		return false; // not a comment
+	while (line < comment_ptr){
+		if (*line == ' ' ||
+			*line == '\t'){
+				line++;
+			}
+		else 
+			return false; 
+	}
+	return true;
+}
+
 bool is_line_dot_word(char* line){
 	char* word_ptr = strstr(line, ".word");
 	char* comment_ptr;
@@ -211,7 +228,9 @@ void first_pass() {
 		}
 		else {
             //printf("row: %d\n",row);
-			row++; //instruction
+			if (!is_line_dot_word(buffer) && !is_empty_line_or_comment(buffer)){
+				row++; //instruction
+			}
 			check_dot_word(buffer);
 			//todo : maybe check if the line is actually an instruction
 		}
@@ -405,22 +424,6 @@ void writetoimemin(char* nextline, int row){
 	fputs( "\n", imemin );
 }
 
-bool is_empty_line_or_comment(char* line){
-	if (*line == '\n')
-		return true;
-	char* comment_ptr = strstr(line, "#");
-	if (comment_ptr == NULL)
-		return false; // not a comment
-	while (line < comment_ptr){
-		if (*line == ' ' ||
-			*line == '\t'){
-				line++;
-			}
-		else 
-			return false; 
-	}
-	return true;
-}
 
 void second_pass() {
 	/* the second pass already has the linked list of all the lables,
