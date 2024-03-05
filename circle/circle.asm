@@ -24,4 +24,4 @@ OUTPUT:
 	bne $zero, $s0, $s1, $imm2, 0, LOOP		 # LOOP if Current pixel is not # of pixels
 EXIT:
 	halt, $zero, $zero, $zero, $zero, 0, 0
-	.word 256 100
+	.word 256 10

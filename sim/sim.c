@@ -127,7 +127,7 @@ void hex2bin(char* hexstr, char* binstr){
             temp = "1111";
         }
         else{
-            printf("BADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBADBAD\n");
+            printf("INVALID HEX STRING\n");
         }
         strcat(binstr, temp);
         index++;
@@ -237,52 +237,52 @@ bool init_files(char* argv[]){ //open all FILE structs. return false if failed
     //output files
     dmemout = fopen(argv[5], "w"); 
 	if (dmemout == NULL) {
-        printf("ERROR OPENING IMEMIN\n");
+        printf("ERROR OPENING DMEMOUT\n");
 		return false;
 	}
     regout = fopen(argv[6], "w"); 
 	if (regout == NULL) {
-        printf("ERROR OPENING IMEMIN\n");
+        printf("ERROR OPENING REGOUT\n");
 		return false;
 	}
     trace = fopen(argv[7], "w"); 
 	if (trace == NULL) {
-        printf("ERROR OPENING IMEMIN\n");
+        printf("ERROR OPENING TRACE\n");
 		return false;
 	}
     hwregtrace = fopen(argv[8], "w"); 
 	if (hwregtrace == NULL) {
-        printf("ERROR OPENING IMEMIN\n");
+        printf("ERROR OPENING HWREGTRACE\n");
 		return false;
 	}
     cycles = fopen(argv[9], "w"); 
 	if (cycles == NULL) {
-        printf("ERROR OPENING IMEMIN\n");
+        printf("ERROR OPENING CYCLES\n");
 		return false;
 	}
     leds = fopen(argv[10], "w"); 
 	if (leds == NULL) {
-        printf("ERROR OPENING IMEMIN\n");
+        printf("ERROR OPENING LEDS\n");
 		return false;
 	}
     display7seg = fopen(argv[11], "w"); 
 	if (display7seg == NULL) {
-        printf("ERROR OPENING IMEMIN\n");
+        printf("ERROR OPENING DISPLAY7SEG\n");
 		return false;
 	}
     diskout = fopen(argv[12], "w"); 
 	if (diskout == NULL) {
-        printf("ERROR OPENING IMEMIN\n");
+        printf("ERROR OPENING DISKOUT\n");
 		return false;
 	}
     monitortxt = fopen(argv[13], "w"); 
 	if (monitortxt == NULL) {
-        printf("ERROR OPENING IMEMIN\n");
+        printf("ERROR OPENING MONITORTXT\n");
 		return false;
 	}
-    monitoryuv = fopen(argv[14], "w"); 
+    monitoryuv = fopen(argv[14], "wb"); 
 	if (monitoryuv == NULL) {
-        printf("ERROR OPENING IMEMIN\n");
+        printf("ERROR OPENING MONITORYUV\n");
 		return false;
 	}
 
@@ -292,10 +292,8 @@ bool init_files(char* argv[]){ //open all FILE structs. return false if failed
 bool init_code(){
     char* buffer =(char *) malloc((INST_WDT + 1)*sizeof(char)); //line size is 14: 12 for inst, 1 for '\n' and 1 for '\0'
 	int row = 0;
-	//for every line of code inputed:
 	while (fgets(buffer, (INST_WDT + 1)*sizeof(char), imemin) != NULL) {
-		//translate instruction to hex code:
-        asmcode[row] = (char *) malloc(INST_WDT*sizeof(char));
+		asmcode[row] = (char *) malloc(INST_WDT*sizeof(char));
         asmcode[row][12] = '\0';
         strncpy(asmcode[row], buffer, INST_WDT - 1);//copies line without '\n'
         row++;
@@ -311,14 +309,12 @@ bool init_code(){
 bool init_mem(){
     char* buffer =(char *) malloc((MEM_WDT + 1)*sizeof(char));//line size is 10: 8 for word, 1 for '\n' and 1 for '\0'
 	int row = 0;
-	//for every line of code inputed:
 	while (fgets(buffer, (MEM_WDT+1)*sizeof(char), dmemin) != NULL) {
-		//translate instruction to hex code:
 		mem[row] = (char *) malloc(MEM_WDT*sizeof(char));
         strncpy(mem[row], buffer, 8);
         mem[row][8] = '\0';
         row++;
-	}//where can we check for errors?
+	}
     furthestaddresswritten = row;
     for (row; row < MAX_NUM_OF_LINES; row++){
         mem[row] = (char *) malloc(MEM_WDT*sizeof(char));
@@ -329,13 +325,11 @@ bool init_mem(){
     return true;
 }
 
-bool init_disk(){//todo
-    char* buffer =(char *) malloc((MEM_WDT + 1)*sizeof(char));
+bool init_disk(){
+    char* buffer =(char *) malloc((MEM_WDT + 1)*sizeof(char));//line size is 10: 8 for word, 1 for '\n' and 1 for '\0'
 	int sector = 0;
     int row = 0;
-	//for every line of code inputed:
 	while (fgets(buffer, (MEM_WDT + 1)*sizeof(char), diskin) != NULL) {
-		//translate instruction to hex code:
 		disk[sector][row] = (char *) malloc(MEM_WDT*sizeof(char));
         strncpy(disk[sector][row], buffer, 8);
         disk[sector][row][8] = '\0';
@@ -344,11 +338,10 @@ bool init_disk(){//todo
             row = 0;
             sector++;
         }
-	}//where can we check for errors?
+	}
     furthestsectorwritten = sector;
     furthestinsector = row;
     for (sector; sector < NUM_OF_SECTORS; sector++) {
-		//translate instruction to hex code:
 		for (row; row< SECTOR_SIZE; row++){
             disk[sector][row] = (char *) malloc(MEM_WDT*sizeof(char));
             strncpy(disk[sector][row], "00000000", 8);
@@ -366,14 +359,12 @@ bool init_misc(){
         regs[i] = (char *) malloc(MEM_WDT*sizeof(char));
         strcpy(regs[i], "00000000");
         regs[i][8] = '\0';
-        // printf("regs[%d] is %s\n", i, regs[i]);
     }
     
     for (i = 0; i < NUM_OF_IO_REGS ; i++){
         IO[i] = (char *) malloc(MEM_WDT*sizeof(char));
         strcpy(IO[i], "00000000");
         IO[i][8] = '\0';
-        // printf("IO[%d] is %s\n", i, IO[i]);
     }
 
     for (i=0; i < MONITOR_BUFFER_LEN; i++){
@@ -454,20 +445,14 @@ void write2cycles(){
 void write2diskout(){
     int sector = 0;
     int row = 0;
-    // printf("WRITE2DISKOUT 1\n");
-    // printf("WRITE2DISKOUT furthestsectorwritten %d, furthestinsector %d\n", furthestsectorwritten, furthestinsector);
     if (furthestsectorwritten == 0){ return; } 
-    // printf("WRITE2DISKOUT 2\n");
     for (sector; sector < furthestsectorwritten; sector++){
         for (row = 0; row < SECTOR_SIZE; row++){
-            // printf("WRITE2DISKOUT writing in first loop sector %d, row %d, %s\n", sector, row, disk[sector][row]);
             fprintf(diskout, "%s\n", disk[sector][row]);
         }
     }
-    // printf("WRITE2DISKOUT FINISHED FIRST FOR LOOP\n");
     if (furthestinsector != 0){
         for (row = 0; row < furthestinsector; row++){
-            // printf("WRITE2DISKOUT writing in second loop sector %d, row %d, %s\n", sector, row, disk[sector][row]);
             fprintf(diskout, "%s\n", disk[sector][row]);
         }
     }
@@ -478,32 +463,26 @@ void write2monitor(){
     for (int i = 0; i < furthestpixel; i++){
         fprintf(monitortxt, "%s\n", monitor[i]);
         fflush(monitortxt);
-        fprintf(monitoryuv, "%s\n", monitor[i]);
+        unsigned char pxl = (unsigned char) strtol(monitor[i], NULL, 16);
+        fwrite(&pxl, 1, 1, monitoryuv);
         fflush(monitoryuv);
-        // if (i%256 == 0){
-        //     fprintf(monitortxt, "\n");
-        //     fflush(monitortxt);
-        //     fprintf(monitoryuv, "\n");
-        //     fflush(monitoryuv);
-        // }
     }
 }
 
 void write_to_output(){
     //write at end: *dmemout, *regout,   *cycles,   *diskout, *monitortxt, *monitoryuv;
-    // printf("WRITE_TO_OUTPUT dmemout\n");
     write2dmemout();
     fflush(dmemout);
-    // printf("WRITE_TO_OUTPUT regout\n");
+    
     write2regout();
     fflush(regout);
-    // printf("WRITE_TO_OUTPUT cycles\n");
+   
     write2cycles();
     fflush(cycles);
-    // printf("WRITE_TO_OUTPUT diskout\n");
+    
     write2diskout();
     fflush(diskout);
-    // printf("WRITE_TO_OUTPUT monitor\n");
+    
     write2monitor();
 }
 
@@ -511,8 +490,7 @@ void write_to_output(){
 
 void decode_instruction(char* instruction){
     //opcode: 2 digits, rd: 1 digit, rs: 1 digit, rt: 1 digit, rm: 1 digit, imm1: 3 digits, imm2: 3 digits
-    //000000000000
-    // printf("%s\n", instruction);
+    
     char* temp1 = (char*) malloc(2*sizeof(char));
     char* temp2 = (char*) malloc(3*sizeof(char));
     char* temp3 = (char*) malloc(4*sizeof(char));
@@ -523,10 +501,8 @@ void decode_instruction(char* instruction){
 
     temp2[0] = instruction[0];
     temp2[1] = instruction[1];
-    // printf("temp2: first %c, second %c\n", temp2[0], temp2[1]);
     opcode = strtol(temp2, NULL, 16);
-    // printf("CODE IS %d\n", opcode);
-
+    
     temp1[0] = instruction[2];
     rd = strtol(temp1, NULL, 16);
 
@@ -542,17 +518,12 @@ void decode_instruction(char* instruction){
     temp3[0] = instruction[6];
     temp3[1] = instruction[7];
     temp3[2] = instruction[8];
-    // printf("temp3: first %c, second %c, third %c\n", temp3[0], temp3[1], temp3[2]);
     imm1 = strtol(temp3, NULL, 16);
-    // printf("imm1 %d", imm1);
     
     temp3[0] = instruction[9];
     temp3[1] = instruction[10];
     temp3[2] = instruction[11];
-    // printf("temp3: first %c, second %c, third %c\n", temp3[0], temp3[1], temp3[2]);
     imm2 = strtol(temp3, NULL, 16);
-    // printf("imm2 %d", imm2);
-    // printf("values are: oppcode %d, rd %d, rs %d, rt %d, rm %d, imm1 %d, imm2 %d", opcode, rd, rs, rt, rm , imm1, imm2);
     
     free(temp1);
     free(temp2);
@@ -567,7 +538,6 @@ void prepare_instruction(){
 
 void handle_input(){
     int regnum = get_bin_value(regs[rt]) + get_bin_value(regs[rs]);
-    // printf("HANDLE INPUT ON IO %d\n", regnum);
     if (regnum > 22 || regnum < 0) {return;}//out of bounds
     strncpy(regs[rd], IO[regnum], 8);
     if (regnum == MONITORCMDREG) {
@@ -578,14 +548,12 @@ void handle_input(){
 
 void handle_output(){
     int regnum = (get_bin_value(regs[rt]) + get_bin_value(regs[rs]));
-    // printf("HANDLE OUTPUT ON IO %d\n", regnum);
     if (regnum > 22 || regnum < 0){return;}//out of bounds
     bool cantwrite = (regnum == 17 || regnum == 18 || regnum == 19);//rsvd or diskstatus
     if (cantwrite) { return; }
     strncpy(IO[regnum], regs[rm], 8);
-    //conditionally write to led.txt or 7seg.txt
     write2hwtrace("WRITE", regnum);
-    switch (regnum){
+    switch (regnum){ //if we need something special from specific IO reg
         case LEDSREG:
             write2hwleds();
             break;
@@ -613,17 +581,6 @@ void handle_output(){
 }
 
 void run_instruction(){
-    // printf("PC IS %d\n", PC);
-    // printf("opcode is %d\n", opcode);
-    // printf("rd is %d\n", rd);
-    // printf("rs is %d\n", rs );
-    // printf("rt is %d\n", rt);
-    // printf("rm is %d\n", rm);
-    // printf("imm1 is %d\n", imm1);
-    // printf("imm2 is %d\n", imm2);
-    // printf("regs[rs] is %s\n", regs[rs]);
-    // printf("regs[imm1] is %s == %x\n", regs[1], get_bin_value(regs[1]));
-    // printf("regs[imm2] is %s == %x\n", regs[2], get_bin_value(regs[2]));
     int val;
     bool branch;
     bool rdiswritable = !(rd == 0 || rd == 1 || rd == 2);//false when trying to write to $zero or $imm1,2
@@ -681,7 +638,6 @@ void run_instruction(){
             PC++;
             break;
         case Sll:
-            // printf("SLL\n");
             val = rsval << rtval;
             if (rdiswritable) {
                 err = sprintf(regs[rd], "%08x", val);
@@ -733,27 +689,22 @@ void run_instruction(){
             if (rdiswritable) {
                 err = sprintf(regs[rd], "%08x", PC+1);
                 if (err < 0){}//handle error?   
-                // printf("JAL1\n");
             }
             PC = rmval;
-            // printf("JAL2 NEWPC %d writing to reg %d\n", PC, rd);
             break;
         case Lw:
-            // printf("LW\n");
             if (rdiswritable) {
                 strcpy(regs[rd], mem[(rsval + rtval) % MAX_NUM_OF_LINES]);
                 val = get_bin_value(regs[rd]) + rmval;
                 err = sprintf(regs[rd], "%08x", val);
                 if (err < 0){}//handle error?
             }
-            // printf("LW mem read address is %d and it reads %s\n", rsval+rtval, regs[rd]);
             PC++;
             break;
         case Sw:
             val = get_bin_value(regs[rd]) + rmval;
             err = sprintf(mem[(rsval + rtval) % MAX_NUM_OF_LINES], "%08X", val);
             if (err < 0){}//handle error?
-            // printf("SW mem WRITE address is %d and it reads %s\n", rsval+rtval, mem[rsval + rtval]);
             if (rsval + rtval + 1 > furthestaddresswritten){
                 furthestaddresswritten = rsval + rtval + 1;
             }
@@ -761,7 +712,6 @@ void run_instruction(){
             break;
         case Reti:
             PC = get_bin_value(IO[7]);
-            // printf("RETI CALLED, NEW PC IS %x\n", PC);
             in_ISR = false;
             break;
         case In:
@@ -778,7 +728,7 @@ void run_instruction(){
             running = false;
             break;
         default:
-            printf("-------------------------------------------------REALLY BAD PLACE TO BE-------------------------------------------------\n");
+            printf("PASSED INVALID OPCODE ON CYCLE %d. opcode is %d\n", cyclecount, opcode);
             return;//invalid opcode. error
     }
 }
@@ -796,7 +746,6 @@ void write2disk(){
     }
     if ((sector + 1)>furthestsectorwritten){
         furthestsectorwritten = sector + 1;
-        // printf("furthestsectorwritten updated to %d\n", furthestsectorwritten);
         furthestinsector = 0;
     }
     strncpy(IO[14], "00000000", 8);
@@ -873,7 +822,6 @@ void get_next_irq2(){
 
 void save_in_monitor(){
     int monitoraddr = get_bin_value(IO[20]);
-    // printf("WRITING TO MONITOR PXL %d\n", monitoraddr);
     if (monitoraddr + 1 > furthestpixel){
         furthestpixel = monitoraddr + 1;
     }
@@ -1000,11 +948,10 @@ void free_all(){
 }
 
 void finalize(){ //release everything for program end and print last things for output files if needed
-    printf("FINALIZE write_to_output\n");
     write_to_output();
-    printf("FINALIZE free_all\n");
+    
     free_all();
-    printf("FINALIZE close_files\n");
+    
     close_files();
 }
 
@@ -1014,21 +961,20 @@ int main(int argc, char* argv[]) {
     if (argc != 15) {
 		return EXIT_FAILURE;
 	}
-    printf("STARTING INIT\n");
+    
     if (!init_files(argv)){
         //error
         return EXIT_FAILURE;
     }
-    printf("STARTING INIT 2\n");
+    
     if (!init_values()){
         //error
         return EXIT_FAILURE;
     }
-    printf("INIT DONE\n");
+    
     run_program();
-    printf("RUN PROGRAM\n");
+    
     finalize();
-    printf("FINALIZE\n");
     
     return EXIT_SUCCESS;
 };
