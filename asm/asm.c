@@ -61,7 +61,7 @@ struct labels* label;
 
 int* dmem;
 
-bool is_empty_line_or_comment(char* line){
+bool is_empty_line_or_comment(char* line){ // line, comment or any line that we can ignore.
 	if (*line == '\n')
 		return true;
 	char* comment_ptr = strstr(line, "#");
@@ -78,7 +78,7 @@ bool is_empty_line_or_comment(char* line){
 	return true;
 }
 
-bool is_line_dot_word(char* line){
+bool is_line_dot_word(char* line){ //The ".word" will be saved later in the dmem array
 	char* word_ptr = strstr(line, ".word");
 	char* comment_ptr;
 	if (word_ptr == NULL) {
@@ -108,8 +108,7 @@ bool is_line_a_label(char* line) { // examples: L4:, Olnmfda:, L1:
 	return false;
 }
 
-
-int save_label(char* name, int address) {
+int save_label(char* name, int address) { //saves the label to a linked list, straightforwad implementaion.
 	char* nam = name;
 	int len = 0;
 	while(*nam != '\0' && *nam != ':'){
@@ -169,7 +168,7 @@ int save_label(char* name, int address) {
 	return EXIT_FAILURE; //should never reach
 }
 
-bool my_str_cmpr(char* str1, char* str2){
+bool my_str_cmpr(char* str1, char* str2){ //used to compare labels, compares only the first part of the longer string. 
 	while(str1 != NULL && str2 != NULL && *str1 != '\0' && *str2 != '\0'){
 		if (*str1 != *str2)
 			return false;
@@ -179,7 +178,7 @@ bool my_str_cmpr(char* str1, char* str2){
 	return true;
 }
 
-struct labels* get_label(char* label_name){
+struct labels* get_label(char* label_name){ //getting a label from the linked list, my_str_cmp is used to not have to change strings sizes.
 	struct labels* tmp = label;
 	while (tmp != NULL) {
 		if ( tmp->label_name != NULL && my_str_cmpr(tmp->label_name,label_name))
@@ -191,7 +190,7 @@ struct labels* get_label(char* label_name){
 	return NULL;
 }
 
-void check_dot_word(char* line){
+void check_dot_word(char* line){ //This cheks the .word format and saves it in dmem. We assume allocation of dmem.
 	char* helper = (char *)malloc(MAX_LINE_LEN * sizeof(char));
 	char* to_free = helper;
 	if (helper == NULL) { perror("MALLOC ERROR"); return;}
@@ -236,7 +235,8 @@ void first_pass() {
 		}
 	}
 }
-char* handle_opcode(char** str){
+
+char* handle_opcode(char** str){ //list of op codes.
 	if (strcmp(*str, "add") == 0){
 		return ADD;
 	}
@@ -308,7 +308,7 @@ char* handle_opcode(char** str){
 	}
 }
 
-char* handle_register(char** str){
+char* handle_register(char** str){ //list of registers
 	if (strcmp(*str, "$zero") == 0){
 		return $ZERO;
 	}
@@ -362,7 +362,7 @@ char* handle_register(char** str){
 	}
 }
 
-void handle_immediate(char* str, char* hex){
+void handle_immediate(char* str, char* hex){ //handles the immediate, converts dec or hex to string, if its a label we get the label from the linked list
 	int base_ten = 10;
 	struct labels* lbl = get_label(str);
 	if (lbl != NULL){ // If it's a label
@@ -386,7 +386,7 @@ void handle_immediate(char* str, char* hex){
 	return;
 }
 
-void translate_instruction(char* line, char* instruction) {
+void translate_instruction(char* line, char* instruction) { // Chunks up the instruction to 6 pieces. Calls the appropriate funcion for each piece.
 	int wordnum = 0;
 	//char instruction[48] = {0};
 	char* pch = "";
@@ -418,14 +418,13 @@ void translate_instruction(char* line, char* instruction) {
 	}
 }
 
-void writetoimemin(char* nextline, int row){
+void writetoimemin(char* nextline, int row){ //using fputs
 	fseek ( imemin , 0, SEEK_CUR);
 	fputs( nextline, imemin ); 
 	fputs( "\n", imemin );
 }
 
-
-void second_pass() {
+void second_pass() { //both translates and writes to imemin
 	/* the second pass already has the linked list of all the lables,
 	now we can create the two output files.*/
 	char buffer[MAX_LINE_LEN];
@@ -437,7 +436,7 @@ void second_pass() {
 			//printf("translating row %d\n",row);
 			char* instruction = (char*) calloc(sizeof(char),48); // todo add check
 			translate_instruction(buffer, instruction);
-			printf("%s\n",instruction);
+			//printf("%s\n",instruction);
 			writetoimemin(instruction, row);
 			free(instruction);
 			row++;
@@ -445,7 +444,7 @@ void second_pass() {
 	}
 }
 
-int find_biggest_index(){
+int find_biggest_index(){ // the biggest line number that will be written to dmem.
 	for (int i = 4095; i >= 0; i--){
 		if (dmem[i] != 0)
 			{return i;}
@@ -453,24 +452,24 @@ int find_biggest_index(){
 	return 0;
 }
 
-void create_dmem(){
+void create_dmem(){ //writes to dmem
 	char buff[9];
 	int biggest_num = find_biggest_index();
-	printf("%s","dmem\n");
+	//printf("%s","dmem\n");
 	for (int i = 0; i <= biggest_num; i++){
 		snprintf(buff, 1+sizeof(buff),"%8X", dmem[i]); //THIS FUNC CONTAINS IMPLICIT MALLOC, MEM IS FREED IN translate_instruction()
 		for (int j = 0; j < 8; j++){
 			if (buff[j] == ' ')
 				buff[j] = '0';
 		}
-		printf("%s\n",buff);
+		//printf("%s\n",buff);
 		fseek ( dmemin , 0, SEEK_CUR);
 		fputs( buff,  dmemin); 
 		fputs( "\n", dmemin );
 	}
 }
 
-void free_labels(){
+void free_labels(){ //freeing of alloced memory
 	struct labels* tmp = label;
 	struct labels* tmp_next = label;
 	while(tmp != NULL){
@@ -523,7 +522,9 @@ int main(int argc, char* argv[]) {
 	fclose(imemin);
 	fclose(dmemin);
 
+	free(dmem);
 	free_labels();
-	printf("Done\n");
+	//printf("Done\n");
+	/*		(●'◡'●)		*/
 	return 0;
 }
