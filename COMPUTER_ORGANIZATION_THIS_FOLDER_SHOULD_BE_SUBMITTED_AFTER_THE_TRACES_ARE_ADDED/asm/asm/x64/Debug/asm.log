@@ -1,0 +1,3 @@
+﻿  asm.c
+C:\Users\Dan\source\repos\asm\asm\asm.c(418,1): warning C4267:  'initializing': conversion from 'size_t' to 'int', possible loss of data
+  asm.vcxproj -> C:\Users\Dan\source\repos\asm\x64\Debug\asm.exe
